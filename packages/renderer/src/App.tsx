@@ -66,6 +66,7 @@ function App() {
   }, [])
 
   const handleFrequencyChange = async (frequency: string) => {
+    console.log('changing freq')
     const freqInHz = Number(frequency.replace(/\D/g, '')) * 1000
     const result = await sdrApi.setFrequency(freqInHz)
     if (result.success) {
