@@ -66,14 +66,14 @@
 
 .channel-number {
   font-family: 'DSEG14-Classic', 'Courier New', monospace;
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: #00ff00;
   text-shadow: 0 0 10px #00ff00;
 }
 
 .frequency-value {
   font-family: 'DSEG14-Classic', 'Courier New', monospace;
-  font-size: 3.5rem;
+  font-size: 3rem;
   color: #00ff00;
   text-shadow: 0 0 10px #00ff00;
   letter-spacing: 0.1em;
@@ -82,7 +82,12 @@
 /* Scan Animation */
 .scan-animation {
   display: inline-block;
-  animation: scan-marquee 2s steps(4) infinite;
+  animation: scan-marquee 2s steps(6) infinite;
+  white-space: nowrap;
+}
+
+.scan-text {
+  padding-right: 2em;
 }
 
 @keyframes scan-marquee {
@@ -90,7 +95,7 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%);
   }
 }
 

@@ -60,7 +60,10 @@ export function ScannerControls({
         <span className="channel-number">{channelNumber}</span>
         <span className="frequency-value">
           {isScanning ? (
-            <span className="scan-animation">SCAN</span>
+            <span className="scan-animation">
+              <span className="scan-text">SCAN</span>
+              <span className="scan-text">SCAN</span>
+            </span>
           ) : (
             frequency
           )}
