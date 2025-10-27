@@ -9,6 +9,7 @@ import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createSDRService} from './modules/SDRService.js';
 import {createDatabaseModule} from './modules/Database.js';
+import {createScannerModule} from './modules/Scanner.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -20,6 +21,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(autoUpdater())
     .init(createDatabaseModule())
     .init(createSDRService())
+    .init(createScannerModule())
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))

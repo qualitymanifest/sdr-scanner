@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './ScannerControls.css';
-import { databaseApi, type Profile } from '../utils/preloadApi';
+import { databaseApi, scannerApi, type Profile } from '../utils/preloadApi';
 
 interface ScannerControlsProps {
   onFrequencyChange?: (frequency: string) => void;
@@ -40,6 +40,31 @@ export function ScannerControls({
     loadProfiles();
   }, []);
 
+  // Listen for scanner frequency changes
+  useEffect(() => {
+    const removeFrequencyListener = scannerApi.onFrequencyChange((data) => {
+      // Convert Hz to MHz for display (e.g., 162550000 -> "162.550")
+      const freqMHz = (data.frequency / 1_000_000).toFixed(3);
+      setFrequency(freqMHz);
+
+      // Update channel number
+      if (data.channel !== null) {
+        setChannelNumber(data.channel.toString());
+      } else {
+        setChannelNumber('');
+      }
+    });
+
+    const removeStoppedListener = scannerApi.onStopped(() => {
+      setIsScanning(false);
+    });
+
+    return () => {
+      removeFrequencyListener();
+      removeStoppedListener();
+    };
+  }, []);
+
   const handleNumberClick = (num: string) => {
     // Only allow input when not scanning
     if (isScanning) {
@@ -67,14 +92,38 @@ export function ScannerControls({
     }
   };
 
-  const handleScan = () => {
-    setIsScanning(true);
-    onScan?.();
+  const handleScan = async () => {
+    // Validate that a profile is selected
+    if (!selectedProfile) {
+      console.error('No profile selected');
+      return;
+    }
+
+    const profileId = parseInt(selectedProfile, 10);
+    if (isNaN(profileId)) {
+      console.error('Invalid profile ID');
+      return;
+    }
+
+    // Start scanning with the selected profile
+    const result = await scannerApi.start(profileId);
+    if (result.success) {
+      setIsScanning(true);
+      onScan?.();
+    } else {
+      console.error('Failed to start scanning:', result.error);
+    }
   };
 
-  const handleHold = () => {
-    setIsScanning(false);
-    onHold?.();
+  const handleHold = async () => {
+    // Stop scanning
+    const result = await scannerApi.stop();
+    if (result.success) {
+      setIsScanning(false);
+      onHold?.();
+    } else {
+      console.error('Failed to stop scanning:', result.error);
+    }
   };
 
   return (

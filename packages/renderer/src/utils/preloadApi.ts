@@ -112,8 +112,44 @@ export interface DatabaseApi {
   };
 }
 
+// Scanner API types (matching preload/src/scannerApi.ts)
+export interface ScannerStatus {
+  isScanning: boolean;
+  profileId: number | null;
+  currentFrequency: {
+    frequencyHz: number;
+    channel: number | null;
+  } | null;
+  currentIndex: number;
+  totalFrequencies: number;
+}
+
+export interface ScannerResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface ScannerFrequencyChange {
+  frequency: number;
+  channel: number | null;
+  index: number;
+  total: number;
+}
+
+export interface ScannerApi {
+  start: (profileId: number) => Promise<ScannerResponse>;
+  stop: () => Promise<ScannerResponse>;
+  getStatus: () => Promise<ScannerStatus>;
+  onFrequencyChange: (callback: (data: ScannerFrequencyChange) => void) => () => void;
+  onStarted: (callback: (data: {profileId: number; frequency: number; channel: number | null}) => void) => () => void;
+  onStopped: (callback: () => void) => () => void;
+}
+
 // Export the SDR API
 export const sdrApi = getPreloadApi<SDRApi>('sdrApi');
 
 // Export the Database API
 export const databaseApi = getPreloadApi<DatabaseApi>('databaseApi');
+
+// Export the Scanner API
+export const scannerApi = getPreloadApi<ScannerApi>('scannerApi');

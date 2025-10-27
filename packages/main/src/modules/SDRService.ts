@@ -2,6 +2,7 @@ import type {AppModule} from '../AppModule.js';
 import type {ModuleContext} from '../ModuleContext.js';
 import {ipcMain, BrowserWindow} from 'electron';
 import {createRequire} from 'node:module';
+import {handleAudioData as notifyScanner} from './Scanner.js';
 
 const require = createRequire(import.meta.url);
 const SDRRadio = require('rtlfmjs');
@@ -18,6 +19,20 @@ let radio: InstanceType<typeof SDRRadio> | null = null;
 let speaker: any | null = null;
 let isRunning = false;
 let isMuted = false;
+
+/**
+ * Get the current radio instance (for use by Scanner module)
+ */
+export function getRadioInstance() {
+  return radio;
+}
+
+/**
+ * Check if SDR is running
+ */
+export function isSDRRunning() {
+  return isRunning;
+}
 
 export function createSDRService(): AppModule {
   return {
@@ -71,6 +86,9 @@ function setupIPCHandlers() {
             speaker.write(silence);
           }
         }
+
+        // Notify scanner module about audio data for scan control
+        notifyScanner({signalLevel, squelched});
 
         // Send only metadata to renderer for UI updates
         const mainWindow = getMainWindow();
