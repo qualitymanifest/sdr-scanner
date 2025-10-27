@@ -1,0 +1,22 @@
+/* Digital/Seven-Segment Display Font */
+/* For production, you can download DSEG7 from https://github.com/keshikan/DSEG */
+/* For now, we'll use a fallback approach with monospace fonts styled to look digital */
+
+@font-face {
+  font-family: 'DSEG7 Classic';
+  src: local('Courier New'), local('Courier'), local('monospace');
+  /* When ready to add the actual font file:
+  src: url('/fonts/DSEG7Classic-Regular.woff2') format('woff2'),
+       url('/fonts/DSEG7Classic-Regular.woff') format('woff');
+  */
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* Fallback digital font styling */
+.digital-display {
+  font-family: 'DSEG7 Classic', 'Courier New', 'Courier', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
