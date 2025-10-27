@@ -18,11 +18,32 @@ export function ScannerControls({
   const [frequency, setFrequency] = useState('162.550');
   const [channelNumber, setChannelNumber] = useState('86');
   const [isScanning, setIsScanning] = useState(false);
+  const [inputBuffer, setInputBuffer] = useState('');
 
   const handleNumberClick = (num: string) => {
-    if (!isScanning) {
-      // Simple frequency input logic - can be enhanced
-      setFrequency(prev => prev + num);
+    // Only allow input when not scanning
+    if (isScanning) {
+      return;
+    }
+
+    // Build up the input buffer (max 6 digits)
+    const newBuffer = (inputBuffer + num).slice(0, 6);
+    setInputBuffer(newBuffer);
+
+    // Format for display (e.g., "162550" -> "162.550")
+    if (newBuffer.length > 0) {
+      const displayFreq = newBuffer.length >= 3
+        ? `${newBuffer.slice(0, 3)}.${newBuffer.slice(3)}`
+        : newBuffer;
+      setFrequency(displayFreq);
+    }
+
+    // If we have 6 digits, automatically switch to that frequency
+    if (newBuffer.length === 6) {
+      const formattedFreq = `${newBuffer.slice(0, 3)}.${newBuffer.slice(3)}`;
+      onFrequencyChange?.(formattedFreq);
+      // Clear the input buffer for next entry
+      setInputBuffer('');
     }
   };
 

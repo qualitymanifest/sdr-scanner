@@ -62,8 +62,14 @@ function setupIPCHandlers() {
         squelched: boolean;
       }) => {
         // Play audio through speakers (in main process)
-        if (!isMuted && !squelched && speaker) {
-          speaker.write(left);
+        if (speaker) {
+          if (!isMuted && !squelched) {
+            speaker.write(left);
+          } else {
+            // Write silence to prevent buffer underflow warnings
+            const silence = Buffer.alloc(left.length);
+            speaker.write(silence);
+          }
         }
 
         // Send only metadata to renderer for UI updates

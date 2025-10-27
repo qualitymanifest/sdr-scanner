@@ -89,6 +89,35 @@ npm run build         # Build all packages
 npm run compile       # Create distributable executable
 ```
 
+### Local Development with rtlfmjs
+
+**IMPORTANT: Currently using locally linked rtlfmjs for rapid development**
+
+The project is currently configured to use a local copy of rtlfmjs located at `/Users/work/Projects/rtlfmjs` via npm link. This allows for rapid testing of changes to rtlfmjs without needing to publish or commit changes.
+
+**Current setup:**
+```bash
+# rtlfmjs is linked via:
+cd /Users/work/Projects/rtlfmjs && npm link
+cd /Users/work/Projects/sdr-scanner && npm link rtlfmjs
+```
+
+**TODO: Before production release or CI/CD setup:**
+1. Unlink the local rtlfmjs:
+   ```bash
+   npm unlink rtlfmjs
+   ```
+2. Install rtlfmjs from GitHub:
+   ```bash
+   npm install qualitymanifest/rtlfmjs
+   ```
+3. Update package.json to specify the appropriate version or commit hash
+
+**To verify current link status:**
+```bash
+ls -la node_modules/rtlfmjs  # Should show symlink to ../../rtlfmjs
+```
+
 ## Key Implementation Notes
 
 ### SDR Integration
