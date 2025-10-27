@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 
 const require = createRequire(import.meta.url);
 const SDRRadio = require('rtlfmjs');
+const Speaker = require('speaker');
 
 /**
  * SDR Service Module
@@ -14,7 +15,9 @@ const SDRRadio = require('rtlfmjs');
  */
 
 let radio: InstanceType<typeof SDRRadio> | null = null;
+let speaker: any | null = null;
 let isRunning = false;
+let isMuted = false;
 
 export function createSDRService(): AppModule {
   return {
@@ -36,31 +39,43 @@ function setupIPCHandlers() {
         return {success: false, error: 'SDR is already running'};
       }
 
+      // Initialize speaker for audio output
+      speaker = new Speaker({
+        channels: 1,
+        bitDepth: 16,
+        sampleRate: 48000,
+        signed: true,
+        float: false,
+        littleEndian: true,
+      });
+
       radio = new SDRRadio({
         sampleRate: config?.sampleRate ?? 1_600_000,
         bufsPerSec: config?.bufsPerSec ?? 10,
       });
 
       // Set up event listeners
-      radio.on('audioData', ({left, right, signalLevel, squelched}: {
+      radio.on('audioData', ({left, signalLevel, squelched}: {
         left: Buffer;
         right: Buffer;
         signalLevel: number;
         squelched: boolean;
       }) => {
-        // Send audio data and signal info to renderer for display
-        // The renderer will handle speaker output and recording
-        // Note: left/right are Int16LE Buffers from rtlfmjs
+        // Play audio through speakers (in main process)
+        if (!isMuted && !squelched && speaker) {
+          speaker.write(left);
+        }
+
+        // Send only metadata to renderer for UI updates
         const mainWindow = getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send('sdr:audioData', {
-            // Send buffer data as array for IPC - these are Int16LE samples
-            left: Array.from(left),
-            right: Array.from(right),
             signalLevel,
             squelched,
           });
         }
+
+        // TODO: Handle recording here in the main process
       });
 
       radio.on('error', (err: Error) => {
@@ -97,6 +112,12 @@ function setupIPCHandlers() {
       await radio.stop();
       radio = null;
       isRunning = false;
+
+      // Clean up speaker
+      if (speaker) {
+        speaker.end();
+        speaker = null;
+      }
 
       return {success: true};
     } catch (error) {

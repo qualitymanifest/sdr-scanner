@@ -2,19 +2,15 @@ import './App.css'
 import { ScannerControls } from './components/ScannerControls'
 import { RecordingFeed } from './components/RecordingFeed'
 import { sdrApi } from './utils/preloadApi'
-import { AudioPlayer } from './utils/audioPlayer'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 
 function App() {
   const [isSDRRunning, setIsSDRRunning] = useState(false)
   const [currentFrequency, setCurrentFrequency] = useState<number | null>(null)
   const [signalLevel, setSignalLevel] = useState(0)
   const [isSquelched, setIsSquelched] = useState(false)
-  const audioPlayerRef = useRef<AudioPlayer | null>(null)
 
   useEffect(() => {
-    // Initialize audio player
-    audioPlayerRef.current = new AudioPlayer()
 
     // Start SDR on mount
     const startSDR = async () => {
@@ -33,18 +29,11 @@ function App() {
 
     startSDR()
 
-    // Set up audio data listener
+    // Set up audio data listener for signal level updates
     const removeAudioListener = sdrApi.onAudioData((data) => {
       setSignalLevel(data.signalLevel)
       setIsSquelched(data.squelched)
-
-      console.log(audioPlayerRef.current, data)
-      // Play audio through speakers
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.play(data.left, data.squelched)
-      }
-
-      // TODO: Handle audio recording
+      // Audio playback is now handled in the main process for better performance
     })
 
     // Set up error listener
@@ -57,11 +46,6 @@ function App() {
       removeAudioListener()
       removeErrorListener()
       sdrApi.stop()
-
-      // Dispose audio player
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.dispose()
-      }
     }
   }, [])
 

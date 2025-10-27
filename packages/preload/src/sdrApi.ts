@@ -6,8 +6,6 @@ export interface SDRConfig {
 }
 
 export interface SDRAudioData {
-  left: number[];
-  right: number[];
   signalLevel: number;
   squelched: boolean;
 }
