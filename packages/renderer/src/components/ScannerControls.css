@@ -56,18 +56,23 @@
   gap: 1rem;
   min-height: 100px;
   position: relative;
+}
+
+.frequency-display .frequency-value {
   overflow: hidden;
+  min-width: 0;
+  flex: 1;
 }
 
 .channel-number {
-  font-family: 'DSEG7 Classic', 'Courier New', monospace;
+  font-family: 'DSEG14-Classic', 'Courier New', monospace;
   font-size: 2rem;
   color: #00ff00;
   text-shadow: 0 0 10px #00ff00;
 }
 
 .frequency-value {
-  font-family: 'DSEG7 Classic', 'Courier New', monospace;
+  font-family: 'DSEG14-Classic', 'Courier New', monospace;
   font-size: 3.5rem;
   color: #00ff00;
   text-shadow: 0 0 10px #00ff00;
@@ -77,23 +82,15 @@
 /* Scan Animation */
 .scan-animation {
   display: inline-block;
-  animation: scan-marquee 2s linear infinite;
+  animation: scan-marquee 2s steps(4) infinite;
 }
 
 @keyframes scan-marquee {
   0% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
+    transform: translateX(0);
   }
   100% {
     transform: translateX(-100%);
-    opacity: 0;
   }
 }
 

@@ -37,6 +37,7 @@
     "playwright": "^1.55.1"
   },
   "dependencies": {
-    "@app/main": "*"
+    "@app/main": "*",
+    "dseg": "^0.46.0"
   }
 }
