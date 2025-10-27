@@ -67,36 +67,39 @@ export function ScannerControls({
         </span>
       </div>
 
-      {/* Control Buttons */}
-      <div className="control-buttons">
-        <button className="primary-button" onClick={handleScan}>
-          Scan
-        </button>
-        <button className="primary-button" onClick={handleHold}>
-          Hold
-        </button>
-        <button className="primary-button" onClick={onSquelch}>
-          Squelch
-        </button>
-      </div>
-
-      {/* Numeric Keypad */}
-      <div className="numeric-keypad">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-          <button
-            key={num}
-            className="keypad-button"
-            onClick={() => handleNumberClick(num.toString())}
-          >
-            {num}
+      {/* Button Container - Side by Side */}
+      <div className="button-container">
+        {/* Control Buttons - Left */}
+        <div className="control-buttons">
+          <button className="primary-button" onClick={handleHold}>
+            Hold
           </button>
-        ))}
-        <button
-          className="keypad-button zero"
-          onClick={() => handleNumberClick('0')}
-        >
-          0
-        </button>
+          <button className="primary-button" onClick={handleScan}>
+            Scan
+          </button>
+          <button className="primary-button" onClick={onSquelch}>
+            Squelch
+          </button>
+        </div>
+
+        {/* Numeric Keypad - Right */}
+        <div className="numeric-keypad">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+            <button
+              key={num}
+              className="keypad-button"
+              onClick={() => handleNumberClick(num.toString())}
+            >
+              {num}
+            </button>
+          ))}
+          <button
+            className="keypad-button zero"
+            onClick={() => handleNumberClick('0')}
+          >
+            0
+          </button>
+        </div>
       </div>
     </div>
   );

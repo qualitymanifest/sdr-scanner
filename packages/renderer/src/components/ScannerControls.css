@@ -97,23 +97,35 @@
   }
 }
 
-/* Control Buttons */
-.control-buttons {
+/* Button Container - Side by Side Layout */
+.button-container {
   display: flex;
-  flex-direction: column;
   gap: 0.75rem;
+  height: 250px;
+}
+
+/* Control Buttons - Left Column */
+.control-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0.5rem;
+  flex: 1;
 }
 
 .primary-button {
-  padding: 1rem;
+  padding: 0;
   background-color: #5a5a5a;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .primary-button:hover {
@@ -124,23 +136,28 @@
   background-color: #4a4a4a;
 }
 
-/* Numeric Keypad */
+/* Numeric Keypad - Right Side */
 .numeric-keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
   gap: 0.5rem;
+  flex: 2;
 }
 
 .keypad-button {
-  padding: 1rem;
+  padding: 0;
   background-color: #3a3a3a;
   color: white;
   border: 1px solid #5a5a5a;
   border-radius: 4px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .keypad-button:hover {
