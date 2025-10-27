@@ -8,6 +8,7 @@ import {autoUpdater} from './modules/AutoUpdater.js';
 import {allowInternalOrigins} from './modules/BlockNotAllowdOrigins.js';
 import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createSDRService} from './modules/SDRService.js';
+import {createDatabaseModule} from './modules/Database.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -17,6 +18,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(terminateAppOnLastWindowClose())
     .init(hardwareAccelerationMode({enable: false}))
     .init(autoUpdater())
+    .init(createDatabaseModule())
     .init(createSDRService())
 
     // Install DevTools extension if needed

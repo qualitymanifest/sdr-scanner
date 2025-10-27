@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './ScannerControls.css';
+import { databaseApi, type Profile } from '../utils/preloadApi';
 
 interface ScannerControlsProps {
   onFrequencyChange?: (frequency: string) => void;
@@ -14,11 +15,30 @@ export function ScannerControls({
   onHold,
   onSquelch,
 }: ScannerControlsProps) {
-  const [selectedProfile, setSelectedProfile] = useState('default');
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState('');
   const [frequency, setFrequency] = useState('162.550');
   const [channelNumber, setChannelNumber] = useState('86');
   const [isScanning, setIsScanning] = useState(false);
   const [inputBuffer, setInputBuffer] = useState('');
+
+  // Load profiles from database on mount
+  useEffect(() => {
+    const loadProfiles = async () => {
+      try {
+        const loadedProfiles = await databaseApi.profiles.getAll();
+        setProfiles(loadedProfiles);
+        // Select the first profile by default if available
+        if (loadedProfiles.length > 0) {
+          setSelectedProfile(loadedProfiles[0].Id.toString());
+        }
+      } catch (error) {
+        console.error('Failed to load profiles:', error);
+      }
+    };
+
+    loadProfiles();
+  }, []);
 
   const handleNumberClick = (num: string) => {
     // Only allow input when not scanning
@@ -66,10 +86,12 @@ export function ScannerControls({
           onChange={(e) => setSelectedProfile(e.target.value)}
           className="profile-dropdown"
         >
-          <option value="default">Profile</option>
-          <option value="weather">Weather Radio</option>
-          <option value="police">Police</option>
-          <option value="aviation">Aviation</option>
+          <option value="">Select Profile</option>
+          {profiles.map((profile) => (
+            <option key={profile.Id} value={profile.Id.toString()}>
+              {profile.Name}
+            </option>
+          ))}
         </select>
         <button className="gear-button" aria-label="Manage Profiles">
           ⚙️

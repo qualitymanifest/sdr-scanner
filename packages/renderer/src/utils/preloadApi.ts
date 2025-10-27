@@ -51,5 +51,69 @@ export interface SDRApi {
   onError: (callback: (error: SDRError) => void) => () => void;
 }
 
+// Database API types (matching preload/src/databaseApi.ts)
+export interface Profile {
+  Id: number;
+  Name: string;
+}
+
+export interface ProfileFrequency {
+  Id: number;
+  ProfileId: number;
+  FrequencyHz: number;
+  Channel: number | null;
+  Enabled: boolean;
+}
+
+export interface ProfileWithFrequencies extends Profile {
+  frequencies: ProfileFrequency[];
+}
+
+export interface DatabaseResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface CreateProfileResponse extends DatabaseResponse {
+  id?: number;
+}
+
+export interface CreateFrequencyResponse extends DatabaseResponse {
+  id?: number;
+}
+
+export interface DatabaseApi {
+  profiles: {
+    create: (name: string) => Promise<CreateProfileResponse>;
+    getAll: () => Promise<Profile[]>;
+    getById: (id: number) => Promise<Profile | undefined>;
+    getWithFrequencies: (id: number) => Promise<ProfileWithFrequencies | undefined>;
+    update: (id: number, name: string) => Promise<DatabaseResponse>;
+    delete: (id: number) => Promise<DatabaseResponse>;
+  };
+  frequencies: {
+    create: (
+      profileId: number,
+      frequencyHz: number,
+      channel?: number | null,
+      enabled?: boolean,
+    ) => Promise<CreateFrequencyResponse>;
+    getByProfileId: (profileId: number) => Promise<ProfileFrequency[]>;
+    getEnabledByProfileId: (profileId: number) => Promise<ProfileFrequency[]>;
+    update: (
+      id: number,
+      frequencyHz: number,
+      channel: number | null,
+      enabled: boolean,
+    ) => Promise<DatabaseResponse>;
+    updateEnabled: (id: number, enabled: boolean) => Promise<DatabaseResponse>;
+    delete: (id: number) => Promise<DatabaseResponse>;
+    deleteByProfileId: (profileId: number) => Promise<number>;
+  };
+}
+
 // Export the SDR API
 export const sdrApi = getPreloadApi<SDRApi>('sdrApi');
+
+// Export the Database API
+export const databaseApi = getPreloadApi<DatabaseApi>('databaseApi');
