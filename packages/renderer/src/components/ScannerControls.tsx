@@ -20,6 +20,7 @@ export function ScannerControls({
   const [frequency, setFrequency] = useState('162.550');
   const [channelNumber, setChannelNumber] = useState('86');
   const [isScanning, setIsScanning] = useState(false);
+  const [isPausedOnSignal, setIsPausedOnSignal] = useState(false);
   const [inputBuffer, setInputBuffer] = useState('');
 
   // Load profiles from database on mount
@@ -53,10 +54,14 @@ export function ScannerControls({
       } else {
         setChannelNumber('');
       }
+
+      // Update paused state based on whether we've received an active signal
+      setIsPausedOnSignal(data.hasReceivedActiveSignal);
     });
 
     const removeStoppedListener = scannerApi.onStopped(() => {
       setIsScanning(false);
+      setIsPausedOnSignal(false);
     });
 
     return () => {
@@ -151,7 +156,7 @@ export function ScannerControls({
       <div className="frequency-display">
         <span className="channel-number">{channelNumber}</span>
         <span className="frequency-value">
-          {isScanning ? (
+          {isScanning && !isPausedOnSignal ? (
             <span className="scan-animation">
               <span className="scan-text">SCAN</span>
               <span className="scan-text">SCAN</span>

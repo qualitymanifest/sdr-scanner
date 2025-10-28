@@ -7,9 +7,9 @@
 }
 
 .left-panel {
-  width: 30%;
-  min-width: 300px;
-  max-width: 400px;
+  width: 450px;
+  min-width: 450px;
+  max-width: 450px;
   border-right: 1px solid #3a3a3a;
 }
 

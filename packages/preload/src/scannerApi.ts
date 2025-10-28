@@ -21,6 +21,7 @@ export interface ScannerFrequencyChange {
   channel: number | null;
   index: number;
   total: number;
+  hasReceivedActiveSignal: boolean;
 }
 
 /**

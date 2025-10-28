@@ -107,6 +107,7 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
       channel: frequencies[0].Channel,
       index: 0,
       total: frequencies.length,
+      hasReceivedActiveSignal: false,
     });
 
     return {success: true};
@@ -171,6 +172,7 @@ async function moveToNextFrequency() {
     channel: nextFreq.Channel,
     index: scannerState.currentIndex,
     total: scannerState.frequencies.length,
+    hasReceivedActiveSignal: scannerState.hasReceivedActiveSignal,
   });
 }
 
@@ -190,6 +192,15 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
     // Mark that we've received an active signal on this frequency
     if (!scannerState.hasReceivedActiveSignal) {
       scannerState.hasReceivedActiveSignal = true;
+
+      // Notify renderer that we've paused on a signal
+      notifyRenderer('scanner:frequencyChange', {
+        frequency: scannerState.currentFrequency?.FrequencyHz,
+        channel: scannerState.currentFrequency?.Channel,
+        index: scannerState.currentIndex,
+        total: scannerState.frequencies.length,
+        hasReceivedActiveSignal: true,
+      });
     }
 
     // If we were waiting for unsquelch, cancel the timer
