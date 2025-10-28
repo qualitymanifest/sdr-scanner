@@ -15,12 +15,13 @@ function App() {
     // Start SDR on mount
     const startSDR = async () => {
       const result = await sdrApi.start({
-        sampleRate: 1_600_000,
-        bufsPerSec: 10,
+        sampleRate: 2_048_000,
+        bufsPerSec: 20,
       })
       if (result.success) {
         setIsSDRRunning(true)
-        handleFrequencyChange("162.550")
+        //handleFrequencyChange("162.550")
+        handleFrequencyChange("160.860");
         console.log('SDR started successfully')
       } else {
         console.error('Failed to start SDR:', result.error)
