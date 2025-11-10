@@ -145,7 +145,7 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
 
 /**
  * Stop scanning
- * Preserves the current frequency so scanning can resume from the next frequency
+ * Preserves the profile, frequencies, and current frequency so scanning can resume
  */
 function stopScan(): {success: boolean} {
   if (unsquelchTimer) {
@@ -154,17 +154,11 @@ function stopScan(): {success: boolean} {
   }
 
   const wasScanning = scannerState.isScanning;
-  const currentFrequency = scannerState.currentFrequency;
 
-  scannerState = {
-    isScanning: false,
-    profileId: null,
-    frequencies: [],
-    currentIndex: 0,
-    currentFrequency: currentFrequency, // Preserve current frequency for resume
-    hasReceivedActiveSignal: false,
-    waitingForUnsquelch: false,
-  };
+  // Preserve profile, frequencies, and current frequency for resume
+  scannerState.isScanning = false;
+  scannerState.hasReceivedActiveSignal = false;
+  scannerState.waitingForUnsquelch = false;
 
   if (wasScanning) {
     notifyRenderer('scanner:stopped', {});
@@ -268,6 +262,54 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
 }
 
 /**
+ * Set frequency manually (not part of scanning)
+ * Updates both the radio and the scanner's current frequency tracking
+ */
+async function setFrequencyManually(
+  frequencyHz: number,
+): Promise<{success: boolean; error?: string}> {
+  try {
+    // Set the radio frequency
+    await setFrequency(frequencyHz);
+
+    // Update scanner state to track this frequency
+    // Look up if this frequency exists in the current profile
+    const matchingFreq = scannerState.frequencies.find(f => f.FrequencyHz === frequencyHz);
+
+    if (matchingFreq) {
+      // It's in the current profile, update with full info
+      scannerState.currentFrequency = matchingFreq;
+    } else {
+      // It's not in the profile (or no profile loaded), create a minimal entry
+      scannerState.currentFrequency = {
+        Id: 0,
+        ProfileId: scannerState.profileId ?? 0,
+        FrequencyHz: frequencyHz,
+        Channel: null,
+        Enabled: true,
+      };
+    }
+
+    // Notify renderer
+    notifyRenderer('scanner:frequencyChange', {
+      frequency: frequencyHz,
+      channel: matchingFreq?.Channel ?? null,
+      index: scannerState.currentIndex,
+      total: scannerState.frequencies.length,
+      hasReceivedActiveSignal: false,
+    });
+
+    return {success: true};
+  } catch (error) {
+    console.error('Failed to set frequency:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
  * Get current scanner status
  */
 function getScannerStatus() {
@@ -294,6 +336,11 @@ function setupIPCHandlers() {
   // Stop scanning (hold)
   ipcMain.handle('scanner:stop', async () => {
     return stopScan();
+  });
+
+  // Set frequency manually
+  ipcMain.handle('scanner:setFrequency', async (_, frequencyHz: number) => {
+    return setFrequencyManually(frequencyHz);
   });
 
   // Get scanner status

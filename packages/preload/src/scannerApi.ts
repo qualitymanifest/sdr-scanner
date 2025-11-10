@@ -44,6 +44,15 @@ export const scannerApi = {
   },
 
   /**
+   * Set frequency manually (not part of scanning)
+   * Updates both the radio frequency and scanner's tracking
+   * @param frequencyHz - The frequency in Hz
+   */
+  setFrequency: (frequencyHz: number): Promise<ScannerResponse> => {
+    return ipcRenderer.invoke('scanner:setFrequency', frequencyHz);
+  },
+
+  /**
    * Get current scanner status
    */
   getStatus: (): Promise<ScannerStatus> => {

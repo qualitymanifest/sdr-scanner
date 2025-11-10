@@ -140,6 +140,7 @@ export interface ScannerFrequencyChange {
 export interface ScannerApi {
   start: (profileId: number) => Promise<ScannerResponse>;
   stop: () => Promise<ScannerResponse>;
+  setFrequency: (frequencyHz: number) => Promise<ScannerResponse>;
   getStatus: () => Promise<ScannerStatus>;
   onFrequencyChange: (callback: (data: ScannerFrequencyChange) => void) => () => void;
   onStarted: (callback: (data: {profileId: number; frequency: number; channel: number | null}) => void) => () => void;
