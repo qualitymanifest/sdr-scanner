@@ -4,15 +4,11 @@ import { databaseApi, scannerApi, type Profile } from '../utils/preloadApi';
 
 interface ScannerControlsProps {
   onFrequencyChange?: (frequency: string) => void;
-  onScan?: () => void;
-  onHold?: () => void;
   onSquelch?: () => void;
 }
 
 export function ScannerControls({
   onFrequencyChange,
-  onScan,
-  onHold,
   onSquelch,
 }: ScannerControlsProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -73,6 +69,7 @@ export function ScannerControls({
   const handleNumberClick = (num: string) => {
     // Only allow input when not scanning
     if (isScanning) {
+      // Todo: We should probably display "ERR" or something where it normally shows the frequency or "SCAN SCAN..." text
       return;
     }
 
@@ -114,7 +111,6 @@ export function ScannerControls({
     const result = await scannerApi.start(profileId);
     if (result.success) {
       setIsScanning(true);
-      onScan?.();
     } else {
       console.error('Failed to start scanning:', result.error);
     }
@@ -125,7 +121,6 @@ export function ScannerControls({
     const result = await scannerApi.stop();
     if (result.success) {
       setIsScanning(false);
-      onHold?.();
     } else {
       console.error('Failed to stop scanning:', result.error);
     }

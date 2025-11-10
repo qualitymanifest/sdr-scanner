@@ -61,16 +61,6 @@ function App() {
     }
   }
 
-  const handleScan = () => {
-    console.log('Scan started')
-    // TODO: Implement scanning logic
-  }
-
-  const handleHold = () => {
-    console.log('Scan held')
-    // TODO: Implement hold logic
-  }
-
   const handleSquelch = () => {
     console.log('Squelch adjustment')
     // TODO: Implement squelch adjustment UI
@@ -81,8 +71,6 @@ function App() {
       <div className="left-panel">
         <ScannerControls
           onFrequencyChange={handleFrequencyChange}
-          onScan={handleScan}
-          onHold={handleHold}
           onSquelch={handleSquelch}
         />
       </div>

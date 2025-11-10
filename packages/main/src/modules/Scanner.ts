@@ -66,9 +66,17 @@ function notifyRenderer(event: string, data: any) {
 
 /**
  * Start scanning with a profile
+ * If current frequency is in the profile, starts from the next one.
+ * Otherwise, starts from the first frequency in the profile.
  */
 async function startScan(profileId: number): Promise<{success: boolean; error?: string}> {
   try {
+    // Clear any pending unsquelch timer
+    if (unsquelchTimer) {
+      clearTimeout(unsquelchTimer);
+      unsquelchTimer = null;
+    }
+
     // Stop any existing scan
     if (scannerState.isScanning) {
       stopScan();
@@ -81,31 +89,46 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
       return {success: false, error: 'No enabled frequencies in profile'};
     }
 
+    // Determine starting index based on current frequency
+    let startIndex = 0;
+    const currentFreqHz = scannerState.currentFrequency?.FrequencyHz;
+    console.log("current", currentFreqHz);
+    if (currentFreqHz) {
+      const foundIndex = frequencies.findIndex(f => f.FrequencyHz === currentFreqHz);
+      console.log('found', foundIndex)
+      if (foundIndex !== -1) {
+        // Current frequency is in profile, start from next (wrap around)
+        startIndex = (foundIndex + 1) % frequencies.length;
+        console.log('start', startIndex, frequencies[startIndex])
+      }
+      // Otherwise startIndex remains 0 (start from beginning)
+    }
+
     // Initialize scanner state
     scannerState = {
       isScanning: true,
       profileId,
       frequencies,
-      currentIndex: 0,
-      currentFrequency: frequencies[0],
+      currentIndex: startIndex,
+      currentFrequency: frequencies[startIndex],
       hasReceivedActiveSignal: false,
       waitingForUnsquelch: false,
     };
 
-    // Start at the first frequency
-    await setFrequency(frequencies[0].FrequencyHz);
+    // Start at the determined frequency
+    await setFrequency(frequencies[startIndex].FrequencyHz);
 
     // Notify renderer
     notifyRenderer('scanner:started', {
       profileId,
-      frequency: frequencies[0].FrequencyHz,
-      channel: frequencies[0].Channel,
+      frequency: frequencies[startIndex].FrequencyHz,
+      channel: frequencies[startIndex].Channel,
     });
 
     notifyRenderer('scanner:frequencyChange', {
-      frequency: frequencies[0].FrequencyHz,
-      channel: frequencies[0].Channel,
-      index: 0,
+      frequency: frequencies[startIndex].FrequencyHz,
+      channel: frequencies[startIndex].Channel,
+      index: startIndex,
       total: frequencies.length,
       hasReceivedActiveSignal: false,
     });
@@ -122,6 +145,7 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
 
 /**
  * Stop scanning
+ * Preserves the current frequency so scanning can resume from the next frequency
  */
 function stopScan(): {success: boolean} {
   if (unsquelchTimer) {
@@ -130,13 +154,14 @@ function stopScan(): {success: boolean} {
   }
 
   const wasScanning = scannerState.isScanning;
+  const currentFrequency = scannerState.currentFrequency;
 
   scannerState = {
     isScanning: false,
     profileId: null,
     frequencies: [],
     currentIndex: 0,
-    currentFrequency: null,
+    currentFrequency: currentFrequency, // Preserve current frequency for resume
     hasReceivedActiveSignal: false,
     waitingForUnsquelch: false,
   };
