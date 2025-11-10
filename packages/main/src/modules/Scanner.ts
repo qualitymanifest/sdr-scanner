@@ -14,7 +14,6 @@ interface ScannerState {
   isScanning: boolean;
   profileId: number | null;
   frequencies: ProfileFrequency[];
-  currentIndex: number;
   currentFrequency: ProfileFrequency | null;
   hasReceivedActiveSignal: boolean; // Track if we've ever received an active signal on current freq
   waitingForUnsquelch: boolean;
@@ -26,11 +25,23 @@ let scannerState: ScannerState = {
   isScanning: false,
   profileId: null,
   frequencies: [],
-  currentIndex: 0,
   currentFrequency: null,
   hasReceivedActiveSignal: false,
   waitingForUnsquelch: false,
 };
+
+/**
+ * Get the current index of the current frequency in the frequencies array
+ * Returns -1 if current frequency is not in the array
+ */
+function getCurrentIndex(): number {
+  if (!scannerState.currentFrequency || scannerState.frequencies.length === 0) {
+    return -1;
+  }
+  return scannerState.frequencies.findIndex(
+    f => f.FrequencyHz === scannerState.currentFrequency?.FrequencyHz
+  );
+}
 
 let unsquelchTimer: NodeJS.Timeout | null = null;
 
@@ -44,6 +55,7 @@ export function createScannerModule(): AppModule {
 
 /**
  * Set the frequency using the SDR radio instance
+ * Also notifies the renderer of the frequency change with current scanner state
  */
 async function setFrequency(frequencyHz: number): Promise<void> {
   const radio = getRadioInstance();
@@ -52,6 +64,15 @@ async function setFrequency(frequencyHz: number): Promise<void> {
   }
 
   await radio.setFrequency(frequencyHz);
+
+  // Notify renderer of frequency change with current scanner state
+  notifyRenderer('scanner:frequencyChange', {
+    frequency: frequencyHz,
+    channel: scannerState.currentFrequency?.Channel ?? null,
+    index: getCurrentIndex(),
+    total: scannerState.frequencies.length,
+    hasReceivedActiveSignal: scannerState.hasReceivedActiveSignal,
+  });
 }
 
 /**
@@ -109,7 +130,6 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
       isScanning: true,
       profileId,
       frequencies,
-      currentIndex: startIndex,
       currentFrequency: frequencies[startIndex],
       hasReceivedActiveSignal: false,
       waitingForUnsquelch: false,
@@ -123,14 +143,6 @@ async function startScan(profileId: number): Promise<{success: boolean; error?: 
       profileId,
       frequency: frequencies[startIndex].FrequencyHz,
       channel: frequencies[startIndex].Channel,
-    });
-
-    notifyRenderer('scanner:frequencyChange', {
-      frequency: frequencies[startIndex].FrequencyHz,
-      channel: frequencies[startIndex].Channel,
-      index: startIndex,
-      total: frequencies.length,
-      hasReceivedActiveSignal: false,
     });
 
     return {success: true};
@@ -176,8 +188,9 @@ async function moveToNextFrequency() {
   }
 
   // Move to next frequency (wrap around)
-  scannerState.currentIndex = (scannerState.currentIndex + 1) % scannerState.frequencies.length;
-  const nextFreq = scannerState.frequencies[scannerState.currentIndex];
+  const currentIndex = getCurrentIndex();
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % scannerState.frequencies.length;
+  const nextFreq = scannerState.frequencies[nextIndex];
 
   // Reset state for new frequency
   scannerState.currentFrequency = nextFreq;
@@ -185,14 +198,6 @@ async function moveToNextFrequency() {
   scannerState.waitingForUnsquelch = false;
 
   await setFrequency(nextFreq.FrequencyHz);
-
-  notifyRenderer('scanner:frequencyChange', {
-    frequency: nextFreq.FrequencyHz,
-    channel: nextFreq.Channel,
-    index: scannerState.currentIndex,
-    total: scannerState.frequencies.length,
-    hasReceivedActiveSignal: scannerState.hasReceivedActiveSignal,
-  });
 }
 
 /**
@@ -216,7 +221,7 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
       notifyRenderer('scanner:frequencyChange', {
         frequency: scannerState.currentFrequency?.FrequencyHz,
         channel: scannerState.currentFrequency?.Channel,
-        index: scannerState.currentIndex,
+        index: getCurrentIndex(),
         total: scannerState.frequencies.length,
         hasReceivedActiveSignal: true,
       });
@@ -268,11 +273,11 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
 async function setFrequencyManually(
   frequencyHz: number,
 ): Promise<{success: boolean; error?: string}> {
-  try {
-    // Set the radio frequency
-    await setFrequency(frequencyHz);
+  // Save previous state for rollback on error
+  const previousFrequency = scannerState.currentFrequency;
 
-    // Update scanner state to track this frequency
+  try {
+    // Update scanner state to track this frequency BEFORE calling setFrequency
     // Look up if this frequency exists in the current profile
     const matchingFreq = scannerState.frequencies.find(f => f.FrequencyHz === frequencyHz);
 
@@ -290,17 +295,14 @@ async function setFrequencyManually(
       };
     }
 
-    // Notify renderer
-    notifyRenderer('scanner:frequencyChange', {
-      frequency: frequencyHz,
-      channel: matchingFreq?.Channel ?? null,
-      index: scannerState.currentIndex,
-      total: scannerState.frequencies.length,
-      hasReceivedActiveSignal: false,
-    });
+    // Set the radio frequency (will also notify renderer)
+    await setFrequency(frequencyHz);
 
     return {success: true};
   } catch (error) {
+    // Rollback scanner state on error
+    scannerState.currentFrequency = previousFrequency;
+
     console.error('Failed to set frequency:', error);
     return {
       success: false,
@@ -322,7 +324,7 @@ function getScannerStatus() {
           channel: scannerState.currentFrequency.Channel,
         }
       : null,
-    currentIndex: scannerState.currentIndex,
+    currentIndex: getCurrentIndex(),
     totalFrequencies: scannerState.frequencies.length,
   };
 }
