@@ -28,7 +28,7 @@
     "rebuild": "cd node_modules/better-sqlite3 && npx node-gyp rebuild --target=38.1.2 --arch=arm64 --dist-url=https://www.electronjs.org/headers && cd ../usb && npx node-gyp rebuild --target=38.1.2 --arch=arm64 --dist-url=https://www.electronjs.org/headers"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.7.2",
+    "@electron/rebuild": "^4.0.1",
     "@npmcli/map-workspaces": "5.0.0",
     "@playwright/test": "1.55.1",
     "@types/better-sqlite3": "^7.6.13",
