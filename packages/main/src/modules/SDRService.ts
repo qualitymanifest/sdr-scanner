@@ -1,5 +1,4 @@
 import type {AppModule} from '../AppModule.js';
-import type {ModuleContext} from '../ModuleContext.js';
 import {ipcMain, BrowserWindow} from 'electron';
 import {createRequire} from 'node:module';
 import {handleAudioData as notifyScanner} from './Scanner.js';
@@ -34,11 +33,61 @@ export function isSDRRunning() {
   return isRunning;
 }
 
+/**
+ * Internal function to stop the SDR and clean up resources
+ */
+async function stopSDR(): Promise<void> {
+  if (!radio || !isRunning) {
+    return;
+  }
+
+  // Stop writing to speaker immediately
+  const speakerToClose = speaker;
+  speaker = null;
+  isRunning = false;
+
+  // Remove all event listeners to stop data flow
+  radio.removeAllListeners();
+
+  await radio.stop();
+  radio = null;
+
+  // Clean up speaker - must close properly to prevent hanging process
+  if (speakerToClose) {
+    // End the speaker stream immediately without draining
+    speakerToClose.end();
+  }
+}
+
 export function createSDRService(): AppModule {
   return {
-    enable() {
+    enable(context) {
       // Initialize IPC handlers for SDR control
       setupIPCHandlers();
+
+      // Register cleanup handler for app shutdown
+      context.app.on('will-quit', () => {
+        // Just stop everything immediately, don't wait for async cleanup
+        isRunning = false;
+
+        if (speaker) {
+          speaker.end();
+          speaker = null;
+        }
+
+        if (radio) {
+          radio.removeAllListeners();
+          // Directly terminate worker without waiting for graceful shutdown
+          radio._stopped = true;
+          radio.running = false;
+          if (radio.worker) {
+            radio.worker.terminate();
+            radio.worker = null;
+          }
+          // Don't close SDR device - let OS clean it up
+          radio = null;
+        }
+      });
     },
   };
 }
@@ -133,16 +182,7 @@ function setupIPCHandlers() {
         return {success: false, error: 'SDR is not running'};
       }
 
-      await radio.stop();
-      radio = null;
-      isRunning = false;
-
-      // Clean up speaker
-      if (speaker) {
-        speaker.end();
-        speaker = null;
-      }
-
+      await stopSDR();
       return {success: true};
     } catch (error) {
       console.error('Failed to stop SDR:', error);
