@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './ScannerControls.css';
 import { databaseApi, scannerApi, type Profile } from '../utils/preloadApi';
+import { ProfileModal } from './ProfileModal';
 
 interface ScannerControlsProps {
   onFrequencyChange?: (frequency: string) => void;
@@ -18,22 +19,24 @@ export function ScannerControls({
   const [isScanning, setIsScanning] = useState(false);
   const [isPausedOnSignal, setIsPausedOnSignal] = useState(false);
   const [inputBuffer, setInputBuffer] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreatingNewProfile, setIsCreatingNewProfile] = useState(false);
 
   // Load profiles from database on mount
-  useEffect(() => {
-    const loadProfiles = async () => {
-      try {
-        const loadedProfiles = await databaseApi.profiles.getAll();
-        setProfiles(loadedProfiles);
-        // Select the first profile by default if available
-        if (loadedProfiles.length > 0) {
-          setSelectedProfile(loadedProfiles[0].Id.toString());
-        }
-      } catch (error) {
-        console.error('Failed to load profiles:', error);
+  const loadProfiles = async () => {
+    try {
+      const loadedProfiles = await databaseApi.profiles.getAll();
+      setProfiles(loadedProfiles);
+      // Select the first profile by default if available
+      if (loadedProfiles.length > 0) {
+        setSelectedProfile(loadedProfiles[0].Id.toString());
       }
-    };
+    } catch (error) {
+      console.error('Failed to load profiles:', error);
+    }
+  };
 
+  useEffect(() => {
     loadProfiles();
   }, []);
 
@@ -155,12 +158,21 @@ export function ScannerControls({
   };
 
   return (
-    <div className="scanner-controls">
-      {/* Profile Selector */}
-      <div className="profile-selector">
+    <>
+      <div className="scanner-controls">
+        {/* Profile Selector */}
+        <div className="profile-selector">
         <select
           value={selectedProfile}
-          onChange={(e) => setSelectedProfile(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === 'NEW_PROFILE') {
+              setIsCreatingNewProfile(true);
+              setIsModalOpen(true);
+            } else {
+              setSelectedProfile(value);
+            }
+          }}
           className="profile-dropdown"
         >
           <option value="">Select Profile</option>
@@ -169,8 +181,13 @@ export function ScannerControls({
               {profile.Name}
             </option>
           ))}
+          <option value="NEW_PROFILE">+ New Profile</option>
         </select>
-        <button className="gear-button" aria-label="Manage Profiles">
+        <button
+          className="gear-button"
+          aria-label="Manage Profiles"
+          onClick={() => setIsModalOpen(true)}
+        >
           ⚙️
         </button>
       </div>
@@ -224,6 +241,40 @@ export function ScannerControls({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Profile Management Modal */}
+      <ProfileModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setIsCreatingNewProfile(false);
+        }}
+        profileId={isCreatingNewProfile ? null : (selectedProfile ? parseInt(selectedProfile, 10) : null)}
+        onProfileSaved={async (newProfileId?: number) => {
+          await loadProfiles();
+          // If a new profile was created, select it
+          if (newProfileId) {
+            setSelectedProfile(newProfileId.toString());
+          }
+          setIsCreatingNewProfile(false);
+        }}
+        onProfileDeleted={async (deletedProfileId: number) => {
+          // If we're deleting the currently selected profile, stop scanning first
+          if (selectedProfile === deletedProfileId.toString()) {
+            // Stop scanning if active
+            if (isScanning) {
+              await scannerApi.stop();
+              setIsScanning(false);
+            }
+            // Clear selection
+            setSelectedProfile('');
+          }
+
+          // Reload profiles list
+          await loadProfiles();
+        }}
+      />
+    </>
   );
 }
