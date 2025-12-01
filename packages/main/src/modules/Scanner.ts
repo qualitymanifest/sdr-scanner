@@ -181,23 +181,35 @@ function stopScan(): {success: boolean} {
 
 /**
  * Move to the next frequency in the scan list
+ * Can be used during scanning or manually when not scanning
  */
-async function moveToNextFrequency() {
-  if (!scannerState.isScanning || scannerState.frequencies.length === 0) {
-    return;
+async function moveToNextFrequency(): Promise<{success: boolean; error?: string}> {
+  try {
+    // Must have frequencies loaded
+    if (scannerState.frequencies.length === 0) {
+      return {success: false, error: 'No frequencies loaded'};
+    }
+
+    // Move to next frequency (wrap around)
+    const currentIndex = getCurrentIndex();
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % scannerState.frequencies.length;
+    const nextFreq = scannerState.frequencies[nextIndex];
+
+    // Reset state for new frequency
+    scannerState.currentFrequency = nextFreq;
+    scannerState.hasReceivedActiveSignal = false;
+    scannerState.waitingForUnsquelch = false;
+
+    await setFrequency(nextFreq.FrequencyHz);
+
+    return {success: true};
+  } catch (error) {
+    console.error('Failed to move to next frequency:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
-
-  // Move to next frequency (wrap around)
-  const currentIndex = getCurrentIndex();
-  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % scannerState.frequencies.length;
-  const nextFreq = scannerState.frequencies[nextIndex];
-
-  // Reset state for new frequency
-  scannerState.currentFrequency = nextFreq;
-  scannerState.hasReceivedActiveSignal = false;
-  scannerState.waitingForUnsquelch = false;
-
-  await setFrequency(nextFreq.FrequencyHz);
 }
 
 /**
@@ -329,6 +341,26 @@ function getScannerStatus() {
   };
 }
 
+/**
+ * Find frequency by channel number in the current profile
+ * Returns null if not found or no profile loaded
+ */
+function findFrequencyByChannel(
+  channel: number,
+): {success: boolean; frequencyHz?: number; error?: string} {
+  if (scannerState.frequencies.length === 0) {
+    return {success: false, error: 'No profile loaded'};
+  }
+
+  const frequency = scannerState.frequencies.find(f => f.Channel === channel);
+
+  if (!frequency) {
+    return {success: false, error: 'Channel not found in profile'};
+  }
+
+  return {success: true, frequencyHz: frequency.FrequencyHz};
+}
+
 function setupIPCHandlers() {
   // Start scanning
   ipcMain.handle('scanner:start', async (_, profileId: number) => {
@@ -340,6 +372,11 @@ function setupIPCHandlers() {
     return stopScan();
   });
 
+  // Move to next frequency (manual or during scan)
+  ipcMain.handle('scanner:moveToNext', async () => {
+    return moveToNextFrequency();
+  });
+
   // Set frequency manually
   ipcMain.handle('scanner:setFrequency', async (_, frequencyHz: number) => {
     return setFrequencyManually(frequencyHz);
@@ -348,6 +385,11 @@ function setupIPCHandlers() {
   // Get scanner status
   ipcMain.handle('scanner:getStatus', async () => {
     return getScannerStatus();
+  });
+
+  // Find frequency by channel number
+  ipcMain.handle('scanner:findFrequencyByChannel', async (_, channel: number) => {
+    return findFrequencyByChannel(channel);
   });
 }
 

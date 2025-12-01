@@ -95,6 +95,9 @@ export function ScannerControls({
   };
 
   const handleScan = async () => {
+    // Clear any partial input buffer when starting scan
+    setInputBuffer('');
+
     // Validate that a profile is selected
     if (!selectedProfile) {
       console.error('No profile selected');
@@ -117,12 +120,37 @@ export function ScannerControls({
   };
 
   const handleHold = async () => {
-    // Stop scanning
-    const result = await scannerApi.stop();
-    if (result.success) {
-      setIsScanning(false);
+    if (isScanning) {
+      // If currently scanning, stop the scan
+      const result = await scannerApi.stop();
+      if (result.success) {
+        setIsScanning(false);
+      } else {
+        console.error('Failed to stop scanning:', result.error);
+      }
     } else {
-      console.error('Failed to stop scanning:', result.error);
+      // If not scanning and there's partial input, check if it's a channel number
+      if (inputBuffer.length > 0) {
+        const channelNumber = parseInt(inputBuffer, 10);
+
+        // Try to find frequency by channel number
+        const result = await scannerApi.findFrequencyByChannel(channelNumber);
+
+        if (result.success && result.frequencyHz) {
+          // Found a matching channel, set to that frequency
+          await scannerApi.setFrequency(result.frequencyHz);
+        }
+
+        // Clear the input buffer whether we found a match or not
+        setInputBuffer('');
+      } else {
+        // No input buffer, try to move to the next frequency in the profile
+        const result = await scannerApi.moveToNext();
+        if (!result.success) {
+          // Silently ignore if we can't move (e.g., not on a profile frequency)
+          console.log('Cannot move to next frequency:', result.error);
+        }
+      }
     }
   };
 

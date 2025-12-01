@@ -44,6 +44,14 @@ export const scannerApi = {
   },
 
   /**
+   * Move to next frequency in the profile
+   * Can be used when not scanning if current frequency is in the profile
+   */
+  moveToNext: (): Promise<ScannerResponse> => {
+    return ipcRenderer.invoke('scanner:moveToNext');
+  },
+
+  /**
    * Set frequency manually (not part of scanning)
    * Updates both the radio frequency and scanner's tracking
    * @param frequencyHz - The frequency in Hz
@@ -57,6 +65,14 @@ export const scannerApi = {
    */
   getStatus: (): Promise<ScannerStatus> => {
     return ipcRenderer.invoke('scanner:getStatus');
+  },
+
+  /**
+   * Find frequency by channel number in the current profile
+   * @param channel - The channel number to look up
+   */
+  findFrequencyByChannel: (channel: number): Promise<{success: boolean; frequencyHz?: number; error?: string}> => {
+    return ipcRenderer.invoke('scanner:findFrequencyByChannel', channel);
   },
 
   /**
