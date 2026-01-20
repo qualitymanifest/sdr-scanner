@@ -2,11 +2,12 @@ import type {AppModule} from '../AppModule.js';
 import {ipcMain, BrowserWindow, app} from 'electron';
 import {createRequire} from 'node:module';
 import {handleAudioData as notifyScanner, isScanning} from './Scanner.js';
-import {getRecordingTimeout} from './Settings.js';
+import {getRecordingTimeout, getMinimumRecordingDuration} from './Settings.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import dayjs from 'dayjs';
 import {FileWriter as WavFileWriter} from 'wav';
+import {parseFile} from 'music-metadata';
 
 const require = createRequire(import.meta.url);
 const SDRRadio = require('rtlfmjs');
@@ -97,7 +98,6 @@ function getRecordingsDirectory(): string {
  * Start a new recording file
  */
 function startRecording(): void {
-  console.log("***start recording called")
   if (!radio || !isRunning) {
     console.error('Cannot start recording: SDR is not running');
     return;
@@ -149,7 +149,6 @@ function startRecording(): void {
  * Write audio data to the current recording file
  */
 function writeAudioToRecording(audioBuffer: Buffer): void {
-  console.log('***write audio to recording called')
   if (!currentRecordingWriter) {
     return;
   }
@@ -196,7 +195,7 @@ export function finalizeRecording(): void {
     // Close the WAV file writer (automatically updates header)
     currentRecordingWriter.end();
 
-    console.log(`*** Finalized recording: ${filePath}`);
+    console.log(`Finalized recording: ${filePath}`);
 
     // Call post-recording processing
     doneRecording(filePath);
@@ -213,11 +212,29 @@ export function finalizeRecording(): void {
  * Stub function called when a recording is complete
  * TODO: Hook up to transcription pipeline
  */
-function doneRecording(filePath: string): void {
+async function doneRecording(filePath: string): Promise<void> {
   console.log(`Recording complete: ${filePath}`);
-  // TODO: Trigger transcription pipeline
-  // TODO: Add to database
-  // TODO: Validate file
+
+  try {
+    // Get the duration of the recording
+    const metadata = await parseFile(filePath);
+    const durationMs = (metadata.format.duration ?? 0) * 1000;
+    const minDuration = getMinimumRecordingDuration();
+
+    // Delete if too short
+    if (durationMs < minDuration) {
+      console.log(`Recording too short (${durationMs.toFixed(0)}ms < ${minDuration}ms), deleting: ${filePath}`);
+      fs.unlinkSync(filePath);
+      return;
+    }
+
+    console.log(`Recording duration: ${durationMs.toFixed(0)}ms`);
+
+    // TODO: Trigger transcription pipeline
+    // TODO: Add to database
+  } catch (error) {
+    console.error('Error processing recording:', error);
+  }
 }
 
 /**
