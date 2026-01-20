@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './ScannerControls.css';
 import { databaseApi, scannerApi, type Profile } from '../utils/preloadApi';
 import { ProfileModal } from './ProfileModal';
+import { SettingsModal } from './SettingsModal';
 
 interface ScannerControlsProps {
   onFrequencyChange?: (frequency: string) => void;
@@ -19,8 +20,9 @@ export function ScannerControls({
   const [isScanning, setIsScanning] = useState(false);
   const [isPausedOnSignal, setIsPausedOnSignal] = useState(false);
   const [inputBuffer, setInputBuffer] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isCreatingNewProfile, setIsCreatingNewProfile] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Load profiles from database on mount
   const loadProfiles = async () => {
@@ -168,7 +170,7 @@ export function ScannerControls({
             const value = e.target.value;
             if (value === 'NEW_PROFILE') {
               setIsCreatingNewProfile(true);
-              setIsModalOpen(true);
+              setIsEditProfileModalOpen(true);
             } else {
               setSelectedProfile(value);
             }
@@ -185,8 +187,15 @@ export function ScannerControls({
         </select>
         <button
           className="gear-button"
-          aria-label="Manage Profiles"
-          onClick={() => setIsModalOpen(true)}
+          aria-label="Edit Profile"
+          onClick={() => setIsEditProfileModalOpen(true)}
+        >
+          ☰
+        </button>
+        <button
+          className="gear-button"
+          aria-label="Settings"
+          onClick={() => setIsSettingsOpen(true)}
         >
           ⚙️
         </button>
@@ -245,9 +254,9 @@ export function ScannerControls({
 
       {/* Profile Management Modal */}
       <ProfileModal
-        isOpen={isModalOpen}
+        isOpen={isEditProfileModalOpen}
         onClose={() => {
-          setIsModalOpen(false);
+          setIsEditProfileModalOpen(false);
           setIsCreatingNewProfile(false);
         }}
         profileId={isCreatingNewProfile ? null : (selectedProfile ? parseInt(selectedProfile, 10) : null)}
@@ -274,6 +283,12 @@ export function ScannerControls({
           // Reload profiles list
           await loadProfiles();
         }}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
     </>
   );

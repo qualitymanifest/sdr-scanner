@@ -2,6 +2,7 @@ import type {AppModule} from '../AppModule.js';
 import {ipcMain, BrowserWindow} from 'electron';
 import {profileFrequencyRepository, type ProfileFrequency} from './Database.js';
 import {getRadioInstance, isSDRRunning} from './SDRService.js';
+import {getUnsquelchWaitTime} from './Settings.js';
 
 /**
  * Scanner Module
@@ -18,8 +19,6 @@ interface ScannerState {
   hasReceivedActiveSignal: boolean; // Track if we've ever received an active signal on current freq
   waitingForUnsquelch: boolean;
 }
-
-const UNSQUELCH_WAIT_TIME = 2000; // 2 seconds in milliseconds
 
 let scannerState: ScannerState = {
   isScanning: false,
@@ -264,13 +263,13 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
     if (!scannerState.waitingForUnsquelch) {
       scannerState.waitingForUnsquelch = true;
 
-      // Wait 2 seconds to see if it becomes unsquelched again
+      // Wait for configured time to see if it becomes unsquelched again
       unsquelchTimer = setTimeout(() => {
-        // After 2 seconds, if still squelched, move to next frequency
+        // After wait time, if still squelched, move to next frequency
         if (scannerState.isScanning && scannerState.waitingForUnsquelch) {
           moveToNextFrequency();
         }
-      }, UNSQUELCH_WAIT_TIME);
+      }, getUnsquelchWaitTime());
     }
 
     // If already waiting, do nothing - timer will handle it

@@ -1,0 +1,30 @@
+import {ipcRenderer} from 'electron';
+
+/**
+ * Settings API - Exposed to renderer via preload
+ *
+ * Provides access to application settings
+ */
+
+export interface AppSettings {
+  unsquelchWaitTime: number; // milliseconds
+}
+
+export interface SettingsResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SettingsApi {
+  getAll: () => Promise<AppSettings>;
+  get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
+  update: (settings: Partial<AppSettings>) => Promise<SettingsResponse>;
+  reset: () => Promise<SettingsResponse>;
+}
+
+export const settingsApi: SettingsApi = {
+  getAll: () => ipcRenderer.invoke('settings:getAll'),
+  get: (key) => ipcRenderer.invoke('settings:get', key),
+  update: (settings) => ipcRenderer.invoke('settings:update', settings),
+  reset: () => ipcRenderer.invoke('settings:reset'),
+};

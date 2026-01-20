@@ -157,3 +157,23 @@ export const databaseApi = getPreloadApi<DatabaseApi>('databaseApi');
 
 // Export the Scanner API
 export const scannerApi = getPreloadApi<ScannerApi>('scannerApi');
+
+// Settings API types (matching preload/src/settingsApi.ts)
+export interface AppSettings {
+  unsquelchWaitTime: number; // milliseconds
+}
+
+export interface SettingsResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SettingsApi {
+  getAll: () => Promise<AppSettings>;
+  get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
+  update: (settings: Partial<AppSettings>) => Promise<SettingsResponse>;
+  reset: () => Promise<SettingsResponse>;
+}
+
+// Export the Settings API
+export const settingsApi = getPreloadApi<SettingsApi>('settingsApi');

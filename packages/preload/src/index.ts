@@ -4,9 +4,10 @@ import {ipcRenderer} from 'electron';
 import {sdrApi} from './sdrApi.js';
 import {databaseApi} from './databaseApi.js';
 import {scannerApi} from './scannerApi.js';
+import {settingsApi} from './settingsApi.js';
 
 function send(channel: string, message: string) {
   return ipcRenderer.invoke(channel, message);
 }
 
-export {sha256sum, versions, send, sdrApi, databaseApi, scannerApi};
+export {sha256sum, versions, send, sdrApi, databaseApi, scannerApi, settingsApi};

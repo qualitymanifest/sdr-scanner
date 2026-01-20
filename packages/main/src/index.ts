@@ -10,6 +10,7 @@ import {allowExternalUrls} from './modules/ExternalUrls.js';
 import {createSDRService} from './modules/SDRService.js';
 import {createDatabaseModule} from './modules/Database.js';
 import {createScannerModule} from './modules/Scanner.js';
+import {createSettingsModule} from './modules/Settings.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -20,6 +21,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(hardwareAccelerationMode({enable: false}))
     .init(autoUpdater())
     .init(createDatabaseModule())
+    .init(createSettingsModule())
     .init(createSDRService())
     .init(createScannerModule())
 
