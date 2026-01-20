@@ -10,11 +10,15 @@ import Store from 'electron-store';
 
 export interface AppSettings {
   unsquelchWaitTime: number; // milliseconds
+  recordingTimeout: number; // milliseconds
+  minimumRecordingDuration: number; // milliseconds
 }
 
 // Default settings
 const DEFAULT_SETTINGS: AppSettings = {
   unsquelchWaitTime: 2000, // 2 seconds
+  recordingTimeout: 2000, // 2 seconds
+  minimumRecordingDuration: 1000, // 1 second
 };
 
 // Create persistent store
@@ -44,6 +48,16 @@ export function createSettingsModule(): AppModule {
               return { success: false, error: 'Unsquelch wait time must be a positive number' };
             }
           }
+          if (settings.recordingTimeout !== undefined) {
+            if (typeof settings.recordingTimeout !== 'number' || settings.recordingTimeout < 0) {
+              return { success: false, error: 'Recording timeout must be a positive number' };
+            }
+          }
+          if (settings.minimumRecordingDuration !== undefined) {
+            if (typeof settings.minimumRecordingDuration !== 'number' || settings.minimumRecordingDuration < 0) {
+              return { success: false, error: 'Minimum recording duration must be a positive number' };
+            }
+          }
 
           // Update the store
           for (const [key, value] of Object.entries(settings)) {
@@ -66,17 +80,18 @@ export function createSettingsModule(): AppModule {
         }
       });
     },
-
-    disable() {
-      ipcMain.removeHandler('settings:getAll');
-      ipcMain.removeHandler('settings:get');
-      ipcMain.removeHandler('settings:update');
-      ipcMain.removeHandler('settings:reset');
-    },
   };
 }
 
-// Export getter for use in other modules
+// Export getters for use in other modules
 export function getUnsquelchWaitTime(): number {
   return store.get('unsquelchWaitTime', DEFAULT_SETTINGS.unsquelchWaitTime);
+}
+
+export function getRecordingTimeout(): number {
+  return store.get('recordingTimeout', DEFAULT_SETTINGS.recordingTimeout);
+}
+
+export function getMinimumRecordingDuration(): number {
+  return store.get('minimumRecordingDuration', DEFAULT_SETTINGS.minimumRecordingDuration);
 }

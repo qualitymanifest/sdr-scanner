@@ -8,6 +8,8 @@ import {ipcRenderer} from 'electron';
 
 export interface AppSettings {
   unsquelchWaitTime: number; // milliseconds
+  recordingTimeout: number; // milliseconds
+  minimumRecordingDuration: number; // milliseconds
 }
 
 export interface SettingsResponse {

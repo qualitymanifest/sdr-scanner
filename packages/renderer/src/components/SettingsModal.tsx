@@ -9,6 +9,8 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [unsquelchWaitTime, setUnsquelchWaitTime] = useState('2000');
+  const [recordingTimeout, setRecordingTimeout] = useState('2000');
+  const [minimumRecordingDuration, setMinimumRecordingDuration] = useState('1000');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,6 +25,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       try {
         const settings = await settingsApi.getAll();
         setUnsquelchWaitTime(settings.unsquelchWaitTime.toString());
+        setRecordingTimeout(settings.recordingTimeout.toString());
+        setMinimumRecordingDuration(settings.minimumRecordingDuration.toString());
       } catch (err) {
         console.error('Failed to load settings:', err);
         setError('Failed to load settings');
@@ -35,17 +39,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleSave = async () => {
     setError('');
 
-    // Validate input
-    const value = parseInt(unsquelchWaitTime, 10);
-    if (isNaN(value) || value < 0) {
+    // Validate inputs
+    const unsquelchValue = parseInt(unsquelchWaitTime, 10);
+    if (isNaN(unsquelchValue) || unsquelchValue < 0) {
       setError('Unsquelch timeout must be a positive number');
+      return;
+    }
+
+    const recordingValue = parseInt(recordingTimeout, 10);
+    if (isNaN(recordingValue) || recordingValue < 0) {
+      setError('Recording timeout must be a positive number');
+      return;
+    }
+
+    const minimumDurationValue = parseInt(minimumRecordingDuration, 10);
+    if (isNaN(minimumDurationValue) || minimumDurationValue < 0) {
+      setError('Minimum recording duration must be a positive number');
       return;
     }
 
     setIsSaving(true);
     try {
       const result = await settingsApi.update({
-        unsquelchWaitTime: value,
+        unsquelchWaitTime: unsquelchValue,
+        recordingTimeout: recordingValue,
+        minimumRecordingDuration: minimumDurationValue,
       });
 
       if (result.success) {
@@ -66,6 +84,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       const settings = await settingsApi.getAll();
       setUnsquelchWaitTime(settings.unsquelchWaitTime.toString());
+      setRecordingTimeout(settings.recordingTimeout.toString());
+      setMinimumRecordingDuration(settings.minimumRecordingDuration.toString());
       setError('');
       onClose();
     } catch (err) {
@@ -100,6 +120,40 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             />
             <div className="input-help">
               Time to wait after signal ends before moving to next frequency
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="recording-timeout">Recording Timeout (ms)</label>
+            <input
+              id="recording-timeout"
+              type="number"
+              min="0"
+              step="100"
+              value={recordingTimeout}
+              onChange={(e) => setRecordingTimeout(e.target.value)}
+              className="settings-input"
+              placeholder="2000"
+            />
+            <div className="input-help">
+              How long to wait before saving a recording after signal ends. Only used when not scanning. When scanning, Unsquelch Timeout is used for this purpose.
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="minimum-recording-duration">Minimum Recording Duration (ms)</label>
+            <input
+              id="minimum-recording-duration"
+              type="number"
+              min="0"
+              step="100"
+              value={minimumRecordingDuration}
+              onChange={(e) => setMinimumRecordingDuration(e.target.value)}
+              className="settings-input"
+              placeholder="1000"
+            />
+            <div className="input-help">
+              Recordings shorter than this duration will be discarded
             </div>
           </div>
 

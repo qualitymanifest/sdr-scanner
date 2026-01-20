@@ -161,6 +161,8 @@ export const scannerApi = getPreloadApi<ScannerApi>('scannerApi');
 // Settings API types (matching preload/src/settingsApi.ts)
 export interface AppSettings {
   unsquelchWaitTime: number; // milliseconds
+  recordingTimeout: number; // milliseconds
+  minimumRecordingDuration: number; // milliseconds
 }
 
 export interface SettingsResponse {
