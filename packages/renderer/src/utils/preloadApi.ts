@@ -37,6 +37,12 @@ export interface SDRStatus {
   frequency: number | null;
 }
 
+export interface SDRRecordingStatus {
+  isRecordingEnabled: boolean;
+  isRecording: boolean;
+  currentRecordingPath: string | null;
+}
+
 export interface SDRResponse {
   success: boolean;
   error?: string;
@@ -49,6 +55,9 @@ export interface SDRApi {
   getStatus: () => Promise<SDRStatus>;
   onAudioData: (callback: (data: SDRAudioData) => void) => () => void;
   onError: (callback: (error: SDRError) => void) => () => void;
+  startRecording: () => Promise<SDRResponse>;
+  stopRecording: () => Promise<SDRResponse>;
+  getRecordingStatus: () => Promise<SDRRecordingStatus>;
 }
 
 // Database API types (matching preload/src/databaseApi.ts)

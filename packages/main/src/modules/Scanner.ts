@@ -1,7 +1,7 @@
 import type {AppModule} from '../AppModule.js';
 import {ipcMain, BrowserWindow} from 'electron';
 import {profileFrequencyRepository, type ProfileFrequency} from './Database.js';
-import {getRadioInstance, isSDRRunning} from './SDRService.js';
+import {getRadioInstance, isSDRRunning, finalizeRecording} from './SDRService.js';
 import {getUnsquelchWaitTime} from './Settings.js';
 
 /**
@@ -265,8 +265,10 @@ export function handleAudioData(data: {signalLevel: number; squelched: boolean})
 
       // Wait for configured time to see if it becomes unsquelched again
       unsquelchTimer = setTimeout(() => {
-        // After wait time, if still squelched, move to next frequency
+        // After wait time, if still squelched, finalize recording and move to next frequency
         if (scannerState.isScanning && scannerState.waitingForUnsquelch) {
+          // Finalize any active recording before moving to next frequency
+          finalizeRecording();
           moveToNextFrequency();
         }
       }, getUnsquelchWaitTime());
@@ -320,6 +322,14 @@ async function setFrequencyManually(
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+/**
+ * Check if scanner is currently scanning
+ * Exported for use by other modules (e.g., SDRService for recording)
+ */
+export function isScanning(): boolean {
+  return scannerState.isScanning;
 }
 
 /**

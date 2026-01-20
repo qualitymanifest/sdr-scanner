@@ -1,7 +1,12 @@
 import type {AppModule} from '../AppModule.js';
-import {ipcMain, BrowserWindow} from 'electron';
+import {ipcMain, BrowserWindow, app} from 'electron';
 import {createRequire} from 'node:module';
-import {handleAudioData as notifyScanner} from './Scanner.js';
+import {handleAudioData as notifyScanner, isScanning} from './Scanner.js';
+import {getRecordingTimeout} from './Settings.js';
+import path from 'node:path';
+import fs from 'node:fs';
+import dayjs from 'dayjs';
+import {FileWriter as WavFileWriter} from 'wav';
 
 const require = createRequire(import.meta.url);
 const SDRRadio = require('rtlfmjs');
@@ -19,6 +24,12 @@ let speaker: any | null = null;
 let isRunning = false;
 let isMuted = false;
 
+// Recording state
+let isRecordingEnabled = false;
+let currentRecordingWriter: WavFileWriter | null = null;
+let currentRecordingPath: string | null = null;
+let recordingTimeoutTimer: NodeJS.Timeout | null = null;
+
 /**
  * Get the current radio instance (for use by Scanner module)
  */
@@ -34,11 +45,192 @@ export function isSDRRunning() {
 }
 
 /**
+ * Check if recording is currently active
+ */
+export function isRecording() {
+  return isRecordingEnabled && currentRecordingWriter !== null;
+}
+
+/**
+ * Get the current tuned frequency from the radio
+ * rtlfmjs stores frequency as: tuned frequency = centerFrequency - offset
+ */
+function getRadioFrequency(): number | null {
+  if (!radio) {
+    return null;
+  }
+  return radio.centerFrequency - radio.offset;
+}
+
+/**
+ * Create a recording filename based on current frequency and timestamp
+ * Format: {freq}_{MM}-{DD}-{YYYY}-{HH}-{mm}.wav
+ * Example: 161-175_01-20-2025-06-19.wav
+ */
+function createRecordingFileName(frequencyHz: number): string {
+  // Convert frequency from Hz to MHz and format with hyphen
+  const freqMHz = (frequencyHz / 1_000_000).toFixed(3);
+  const freqFormatted = freqMHz.replace('.', '-');
+
+  // Format date/time using dayjs
+  const timestamp = dayjs().format('MM-DD-YYYY-HH-mm');
+
+  return `${freqFormatted}_${timestamp}.wav`;
+}
+
+/**
+ * Get the recordings directory path, creating it if it doesn't exist
+ */
+function getRecordingsDirectory(): string {
+  const userDataPath = app.getPath('userData');
+  const recordingsPath = path.join(userDataPath, 'recordings');
+
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(recordingsPath)) {
+    fs.mkdirSync(recordingsPath, { recursive: true });
+  }
+
+  return recordingsPath;
+}
+
+/**
+ * Start a new recording file
+ */
+function startRecording(): void {
+  console.log("***start recording called")
+  if (!radio || !isRunning) {
+    console.error('Cannot start recording: SDR is not running');
+    return;
+  }
+
+  if (currentRecordingWriter) {
+    console.warn('Recording already in progress');
+    return;
+  }
+
+  try {
+    const frequencyHz = getRadioFrequency();
+    if (frequencyHz === null) {
+      console.error('Cannot get radio frequency');
+      return;
+    }
+
+    const recordingsDir = getRecordingsDirectory();
+    const filename = createRecordingFileName(frequencyHz);
+    const filePath = path.join(recordingsDir, filename);
+
+    // Create WAV file writer
+    currentRecordingWriter = new WavFileWriter(filePath, {
+      sampleRate: 48000,
+      channels: 1,
+      bitDepth: 16,
+    });
+
+    currentRecordingPath = filePath;
+
+    console.log(`Started recording to: ${filePath}`);
+
+    // If NOT in scanning mode, start the recording timeout timer
+    // In scanning mode, the Scanner's unsquelchTimer will handle finalization
+    if (!isScanning()) {
+      recordingTimeoutTimer = setTimeout(() => {
+        console.log('Recording timeout expired, finalizing recording');
+        finalizeRecording();
+      }, getRecordingTimeout());
+    }
+  } catch (error) {
+    console.error('Failed to start recording:', error);
+    currentRecordingWriter = null;
+    currentRecordingPath = null;
+  }
+}
+
+/**
+ * Write audio data to the current recording file
+ */
+function writeAudioToRecording(audioBuffer: Buffer): void {
+  console.log('***write audio to recording called')
+  if (!currentRecordingWriter) {
+    return;
+  }
+
+  try {
+    currentRecordingWriter.write(audioBuffer);
+
+    // Reset recording timeout timer (for manual hold mode only)
+    // In scanning mode, we don't use the recording timeout timer
+    if (!isScanning()) {
+      if (recordingTimeoutTimer) {
+        clearTimeout(recordingTimeoutTimer);
+      }
+
+      // Restart the recording timeout timer
+      recordingTimeoutTimer = setTimeout(() => {
+        console.log('Recording timeout expired, finalizing recording');
+        finalizeRecording();
+      }, getRecordingTimeout());
+    }
+  } catch (error) {
+    console.error('Failed to write audio to recording:', error);
+    finalizeRecording();
+  }
+}
+
+/**
+ * Finalize the current recording and close the file
+ */
+export function finalizeRecording(): void {
+  if (!currentRecordingWriter || !currentRecordingPath) {
+    return;
+  }
+
+  // Clear recording timeout timer
+  if (recordingTimeoutTimer) {
+    clearTimeout(recordingTimeoutTimer);
+    recordingTimeoutTimer = null;
+  }
+
+  const filePath = currentRecordingPath;
+
+  try {
+    // Close the WAV file writer (automatically updates header)
+    currentRecordingWriter.end();
+
+    console.log(`*** Finalized recording: ${filePath}`);
+
+    // Call post-recording processing
+    doneRecording(filePath);
+  } catch (error) {
+    console.error('Error finalizing recording:', error);
+  }
+
+  // Reset recording state
+  currentRecordingWriter = null;
+  currentRecordingPath = null;
+}
+
+/**
+ * Stub function called when a recording is complete
+ * TODO: Hook up to transcription pipeline
+ */
+function doneRecording(filePath: string): void {
+  console.log(`Recording complete: ${filePath}`);
+  // TODO: Trigger transcription pipeline
+  // TODO: Add to database
+  // TODO: Validate file
+}
+
+/**
  * Internal function to stop the SDR and clean up resources
  */
 async function stopSDR(): Promise<void> {
   if (!radio || !isRunning) {
     return;
+  }
+
+  // Finalize any open recording
+  if (currentRecordingWriter) {
+    finalizeRecording();
   }
 
   // Stop writing to speaker immediately
@@ -67,6 +259,15 @@ export function createSDRService(): AppModule {
 
       // Register cleanup handler for app shutdown
       context.app.on('will-quit', () => {
+        // Finalize any open recording
+        if (currentRecordingWriter) {
+          try {
+            currentRecordingWriter.end();
+          } catch (error) {
+            console.error('Error finalizing recording on shutdown:', error);
+          }
+        }
+
         // Just stop everything immediately, don't wait for async cleanup
         isRunning = false;
 
@@ -139,6 +340,22 @@ function setupIPCHandlers() {
         // Notify scanner module about audio data for scan control
         notifyScanner({signalLevel, squelched});
 
+        // Handle recording
+        if (isRecordingEnabled) {
+          if (!squelched) {
+            // Active transmission - record it
+            if (!currentRecordingWriter) {
+              // Start new recording
+              startRecording();
+            }
+            // Write audio data to recording
+            if (currentRecordingWriter) {
+              writeAudioToRecording(left);
+            }
+          }
+          // If squelched, don't write data, but let timers continue
+        }
+
         // Send only metadata to renderer for UI updates
         const mainWindow = getMainWindow();
         if (mainWindow) {
@@ -147,8 +364,6 @@ function setupIPCHandlers() {
             squelched,
           });
         }
-
-        // TODO: Handle recording here in the main process
       });
 
       radio.on('error', (err: Error) => {
@@ -200,6 +415,11 @@ function setupIPCHandlers() {
         return {success: false, error: 'SDR is not running'};
       }
 
+      // Finalize any current recording before changing frequency
+      if (currentRecordingWriter) {
+        finalizeRecording();
+      }
+
       await radio.setFrequency(frequency);
       return {success: true};
     } catch (error) {
@@ -215,7 +435,54 @@ function setupIPCHandlers() {
   ipcMain.handle('sdr:getStatus', async () => {
     return {
       isRunning,
-      frequency: radio?.getFrequency?.() ?? null,
+      frequency: getRadioFrequency(),
+    };
+  });
+
+  // Start recording
+  ipcMain.handle('sdr:startRecording', async () => {
+    try {
+      if (!isRunning) {
+        return {success: false, error: 'SDR is not running'};
+      }
+
+      isRecordingEnabled = true;
+      return {success: true};
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  // Stop recording
+  ipcMain.handle('sdr:stopRecording', async () => {
+    try {
+      isRecordingEnabled = false;
+
+      // Finalize any current recording
+      if (currentRecordingWriter) {
+        finalizeRecording();
+      }
+
+      return {success: true};
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  // Get recording status
+  ipcMain.handle('sdr:getRecordingStatus', async () => {
+    return {
+      isRecordingEnabled,
+      isRecording: isRecording(),
+      currentRecordingPath: currentRecordingPath ?? null,
     };
   });
 }

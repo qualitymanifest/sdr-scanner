@@ -20,6 +20,12 @@ export interface SDRStatus {
   frequency: number | null;
 }
 
+export interface SDRRecordingStatus {
+  isRecordingEnabled: boolean;
+  isRecording: boolean;
+  currentRecordingPath: string | null;
+}
+
 export interface SDRResponse {
   success: boolean;
   error?: string;
@@ -78,5 +84,26 @@ export const sdrApi = {
     const listener = (_event: unknown, error: SDRError) => callback(error);
     ipcRenderer.on('sdr:error', listener);
     return () => ipcRenderer.removeListener('sdr:error', listener);
+  },
+
+  /**
+   * Start recording audio transmissions
+   */
+  startRecording: (): Promise<SDRResponse> => {
+    return ipcRenderer.invoke('sdr:startRecording');
+  },
+
+  /**
+   * Stop recording audio transmissions
+   */
+  stopRecording: (): Promise<SDRResponse> => {
+    return ipcRenderer.invoke('sdr:stopRecording');
+  },
+
+  /**
+   * Get current recording status
+   */
+  getRecordingStatus: (): Promise<SDRRecordingStatus> => {
+    return ipcRenderer.invoke('sdr:getRecordingStatus');
   },
 };

@@ -140,6 +140,29 @@
   background-color: #4a4a4a;
 }
 
+/* Recording button styles */
+.primary-button.recording {
+  background-color: #cc0000;
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+.primary-button.recording:hover {
+  background-color: #dd0000;
+}
+
+.primary-button.recording:active {
+  background-color: #bb0000;
+}
+
+@keyframes recording-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 /* Numeric Keypad - Right Side */
 .numeric-keypad {
   display: grid;

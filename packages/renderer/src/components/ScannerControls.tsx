@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './ScannerControls.css';
-import { databaseApi, scannerApi, type Profile } from '../utils/preloadApi';
+import { databaseApi, scannerApi, sdrApi, type Profile } from '../utils/preloadApi';
 import { ProfileModal } from './ProfileModal';
 import { SettingsModal } from './SettingsModal';
 
@@ -23,6 +23,7 @@ export function ScannerControls({
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isCreatingNewProfile, setIsCreatingNewProfile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   // Load profiles from database on mount
   const loadProfiles = async () => {
@@ -159,6 +160,26 @@ export function ScannerControls({
     }
   };
 
+  const handleRecord = async () => {
+    if (isRecording) {
+      // Stop recording
+      const result = await sdrApi.stopRecording();
+      if (result.success) {
+        setIsRecording(false);
+      } else {
+        console.error('Failed to stop recording:', result.error);
+      }
+    } else {
+      // Start recording
+      const result = await sdrApi.startRecording();
+      if (result.success) {
+        setIsRecording(true);
+      } else {
+        console.error('Failed to start recording:', result.error);
+      }
+    }
+  };
+
   return (
     <>
       <div className="scanner-controls">
@@ -228,6 +249,12 @@ export function ScannerControls({
           </button>
           <button className="primary-button" onClick={onSquelch}>
             Squelch
+          </button>
+          <button
+            className={`primary-button ${isRecording ? 'recording' : ''}`}
+            onClick={handleRecord}
+          >
+            {isRecording ? 'Recording' : 'Record'}
           </button>
         </div>
 

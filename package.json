@@ -1,6 +1,6 @@
 {
-  "name": "root",
-  "description": "",
+  "name": "sdr-scanner",
+  "description": "SDR Scanner - Radio frequency monitoring and recording application",
   "version": "3.1.0",
   "private": true,
   "type": "module",
@@ -28,6 +28,7 @@
     "@playwright/test": "1.55.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "24.5.2",
+    "@types/wav": "^1.0.4",
     "create-vite": "7.1.3",
     "electron": "38.1.2",
     "electron-builder": "26.0.12",
@@ -37,7 +38,9 @@
   "dependencies": {
     "@app/main": "*",
     "better-sqlite3": "^12.4.1",
+    "dayjs": "^1.11.19",
     "dseg": "^0.46.0",
-    "electron-store": "^8.2.0"
+    "electron-store": "^8.2.0",
+    "wav": "^1.0.2"
   }
 }
