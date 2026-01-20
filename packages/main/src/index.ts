@@ -11,6 +11,7 @@ import {createSDRService} from './modules/SDRService.js';
 import {createDatabaseModule} from './modules/Database.js';
 import {createScannerModule} from './modules/Scanner.js';
 import {createSettingsModule} from './modules/Settings.js';
+import {createTranscriptionService} from './modules/TranscriptionService.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -22,6 +23,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(autoUpdater())
     .init(createDatabaseModule())
     .init(createSettingsModule())
+    .init(createTranscriptionService())
     .init(createSDRService())
     .init(createScannerModule())
 

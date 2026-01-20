@@ -24,6 +24,17 @@ export default /** @type import('electron-builder').Configuration */
     '!node_modules/@app/**',
     ...await getListOfFilesFromEachWorkspace(),
   ],
+  /**
+   * Bundle whisper.cpp binaries and models as extra resources.
+   * These are placed outside the asar archive so they can be executed.
+   */
+  extraResources: [
+    {
+      from: 'resources/whisper',
+      to: 'whisper',
+      filter: ['**/*'],
+    },
+  ],
 });
 
 /**

@@ -3,6 +3,7 @@ import {ipcMain, BrowserWindow, app} from 'electron';
 import {createRequire} from 'node:module';
 import {handleAudioData as notifyScanner, isScanning} from './Scanner.js';
 import {getRecordingTimeout, getMinimumRecordingDuration} from './Settings.js';
+import {queueTranscription} from './TranscriptionService.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import dayjs from 'dayjs';
@@ -65,8 +66,8 @@ function getRadioFrequency(): number | null {
 
 /**
  * Create a recording filename based on current frequency and timestamp
- * Format: {freq}_{MM}-{DD}-{YYYY}-{HH}-{mm}.wav
- * Example: 161-175_01-20-2025-06-19.wav
+ * Format: {freq}_{MM}-{DD}-{YYYY}-{HH}-{mm}-{ss}.wav
+ * Example: 161-175_01-20-2025-06-19-45.wav
  */
 function createRecordingFileName(frequencyHz: number): string {
   // Convert frequency from Hz to MHz and format with hyphen
@@ -74,7 +75,7 @@ function createRecordingFileName(frequencyHz: number): string {
   const freqFormatted = freqMHz.replace('.', '-');
 
   // Format date/time using dayjs
-  const timestamp = dayjs().format('MM-DD-YYYY-HH-mm');
+  const timestamp = dayjs().format('MM-DD-YYYY-HH-mm-ss');
 
   return `${freqFormatted}_${timestamp}.wav`;
 }
@@ -209,8 +210,7 @@ export function finalizeRecording(): void {
 }
 
 /**
- * Stub function called when a recording is complete
- * TODO: Hook up to transcription pipeline
+ * Function called when a recording is complete
  */
 async function doneRecording(filePath: string): Promise<void> {
   console.log(`Recording complete: ${filePath}`);
@@ -230,8 +230,16 @@ async function doneRecording(filePath: string): Promise<void> {
 
     console.log(`Recording duration: ${durationMs.toFixed(0)}ms`);
 
-    // TODO: Trigger transcription pipeline
-    // TODO: Add to database
+    // Queue transcription (runs in background)
+    queueTranscription(filePath)
+      .then(result => {
+        console.log(`Transcription complete for ${path.basename(filePath)}: "${result.text.substring(0, 50)}..."`);
+        // TODO: Add to database with transcription
+      })
+      .catch(error => {
+        console.error(`Transcription failed for ${path.basename(filePath)}:`, error);
+        // TODO: Update database with transcription failure status
+      });
   } catch (error) {
     console.error('Error processing recording:', error);
   }

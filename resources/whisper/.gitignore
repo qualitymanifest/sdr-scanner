@@ -1,0 +1,9 @@
+# Ignore binaries (they'll be downloaded via GitHub Actions artifacts)
+whisper-cli-*
+
+# Ignore models (downloaded at runtime)
+models/*.bin
+
+# Keep the directory structure
+!models/.gitkeep
+!.gitignore

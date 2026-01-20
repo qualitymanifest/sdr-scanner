@@ -1,0 +1,132 @@
+name: Build Whisper.cpp Binaries
+
+on:
+  workflow_dispatch:  # Manual trigger when you want to update whisper binaries
+    inputs:
+      whisper_version:
+        description: 'Whisper.cpp version/tag to build (e.g., v1.7.6 or master)'
+        required: false
+        default: 'master'
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS (Universal)
+            output: whisper-cli-mac
+            build_script: |
+              # Build for both architectures
+              make clean
+              cmake -B build -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+              cmake --build build --config Release
+              cp build/bin/main whisper-cli-mac
+              chmod +x whisper-cli-mac
+
+          - os: ubuntu-latest
+            name: Linux x64
+            output: whisper-cli-linux-x64
+            build_script: |
+              make clean
+              make -j
+              cp main whisper-cli-linux-x64
+              chmod +x whisper-cli-linux-x64
+
+          - os: windows-latest
+            name: Windows x64
+            output: whisper-cli-win-x64.exe
+            build_script: |
+              cmake -B build -DCMAKE_BUILD_TYPE=Release
+              cmake --build build --config Release
+              copy build\\bin\\Release\\main.exe whisper-cli-win-x64.exe
+
+    steps:
+      - name: Checkout whisper.cpp
+        uses: actions/checkout@v4
+        with:
+          repository: ggml-org/whisper.cpp
+          ref: ${{ github.event.inputs.whisper_version || 'master' }}
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Build whisper.cpp
+        shell: bash
+        run: ${{ matrix.build_script }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}
+          retention-days: 90
+
+      - name: Display build info
+        shell: bash
+        run: |
+          echo "Built whisper.cpp binary: ${{ matrix.output }}"
+          ls -lh ${{ matrix.output }} || dir ${{ matrix.output }}
+          file ${{ matrix.output }} || echo "file command not available"
+
+  create-release:
+    name: Create Release with Binaries
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+
+      - name: Display downloaded files
+        run: |
+          echo "Downloaded binaries:"
+          ls -lhR binaries/
+
+      - name: Create timestamped release
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          echo "RELEASE_TAG=whisper-binaries-$TIMESTAMP" >> $GITHUB_ENV
+          echo "Release tag: whisper-binaries-$TIMESTAMP"
+
+      - name: Upload binaries as release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Whisper.cpp Binaries (${{ github.event.inputs.whisper_version || 'master' }})
+          body: |
+            Pre-built whisper.cpp binaries for SDR Scanner
+
+            Built from: `${{ github.event.inputs.whisper_version || 'master' }}`
+            Build date: ${{ env.RELEASE_TAG }}
+
+            ## Binaries included:
+            - `whisper-cli-mac` - macOS Universal (arm64 + x64)
+            - `whisper-cli-linux-x64` - Linux x64
+            - `whisper-cli-win-x64.exe` - Windows x64
+
+            ## Installation:
+            1. Download the binaries for all platforms
+            2. Place them in `resources/whisper/` directory
+            3. Ensure Linux/macOS binaries are executable: `chmod +x whisper-cli-*`
+          files: |
+            binaries/whisper-cli-mac/whisper-cli-mac
+            binaries/whisper-cli-linux-x64/whisper-cli-linux-x64
+            binaries/whisper-cli-win-x64.exe/whisper-cli-win-x64.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
