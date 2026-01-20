@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './ProfileModal.css';
-import { databaseApi, type ProfileFrequency } from '../utils/preloadApi';
+import { databaseApi } from '../utils/preloadApi';
 
 interface ProfileModalProps {
   isOpen: boolean;

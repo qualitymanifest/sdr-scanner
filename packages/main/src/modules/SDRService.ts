@@ -4,6 +4,7 @@ import {createRequire} from 'node:module';
 import {handleAudioData as notifyScanner, isScanning} from './Scanner.js';
 import {getRecordingTimeout, getMinimumRecordingDuration} from './Settings.js';
 import {queueTranscription} from './TranscriptionService.js';
+import {recordingRepository, parseRecordingFileName} from './Database.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import dayjs from 'dayjs';
@@ -230,15 +231,23 @@ async function doneRecording(filePath: string): Promise<void> {
 
     console.log(`Recording duration: ${durationMs.toFixed(0)}ms`);
 
+    // Extract frequency and datetime from filename and add to database
+    const fileName = path.basename(filePath);
+    const {frequency, datetime} = parseRecordingFileName(fileName);
+    const recordingId = recordingRepository.create(filePath, frequency, datetime, 'pending');
+    console.log(`Added recording to database with ID ${recordingId}`);
+
     // Queue transcription (runs in background)
     queueTranscription(filePath)
       .then(result => {
         console.log(`Transcription complete for ${path.basename(filePath)}: "${result.text.substring(0, 50)}..."`);
-        // TODO: Add to database with transcription
+        // Update database with transcription result
+        recordingRepository.updateTranscription(filePath, 'success', result.text);
       })
       .catch(error => {
         console.error(`Transcription failed for ${path.basename(filePath)}:`, error);
-        // TODO: Update database with transcription failure status
+        // Update database with transcription failure status
+        recordingRepository.updateTranscription(filePath, 'failed', null);
       });
   } catch (error) {
     console.error('Error processing recording:', error);
