@@ -690,6 +690,22 @@ export const recordingRepository = {
    */
   search(searchQuery: string): Recording[] {
     const db = getDatabase();
+
+    // Sanitize the search query for FTS5
+    // Remove or escape special FTS5 characters: " * ( ) AND OR NOT
+    const sanitized = searchQuery
+      .replace(/[":*()]/g, ' ') // Replace FTS5 special chars with space
+      .trim()
+      .split(/\s+/) // Split into words
+      .filter(word => word.length > 0) // Remove empty strings
+      .map(word => `"${word}"`) // Quote each word to make it a phrase search
+      .join(' '); // Join with space (implicit AND)
+
+    // If sanitized query is empty, return empty results
+    if (!sanitized) {
+      return [];
+    }
+
     const stmt = db.prepare(`
       SELECT r.Id, r.Frequency, r.Datetime, r.FilePath, r.TranscriptionText, r.TranscriptionStatus
       FROM Recordings r
@@ -698,7 +714,7 @@ export const recordingRepository = {
       )
       ORDER BY r.Datetime DESC
     `);
-    return stmt.all(searchQuery) as Recording[];
+    return stmt.all(sanitized) as Recording[];
   },
 
   /**
@@ -743,17 +759,36 @@ export const recordingRepository = {
 
     let query: string;
     if (options.searchText) {
-      // Use FTS for text search
-      query = `
-        SELECT r.Id, r.Frequency, r.Datetime, r.FilePath, r.TranscriptionText, r.TranscriptionStatus
-        FROM Recordings r
-        WHERE r.Id IN (
-          SELECT rowid FROM Recordings_fts WHERE Recordings_fts MATCH ?
-        )
-        ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
-        ORDER BY r.Datetime DESC
-      `;
-      values.unshift(options.searchText);
+      // Sanitize the search text for FTS5
+      const sanitized = options.searchText
+        .replace(/[":*()]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(word => word.length > 0)
+        .map(word => `"${word}"`)
+        .join(' ');
+
+      // If sanitized query is empty, skip FTS and use regular query
+      if (!sanitized) {
+        query = `
+          SELECT Id, Frequency, Datetime, FilePath, TranscriptionText, TranscriptionStatus
+          FROM Recordings r
+          ${conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''}
+          ORDER BY Datetime DESC
+        `;
+      } else {
+        // Use FTS for text search
+        query = `
+          SELECT r.Id, r.Frequency, r.Datetime, r.FilePath, r.TranscriptionText, r.TranscriptionStatus
+          FROM Recordings r
+          WHERE r.Id IN (
+            SELECT rowid FROM Recordings_fts WHERE Recordings_fts MATCH ?
+          )
+          ${conditions.length > 0 ? 'AND ' + conditions.join(' AND ') : ''}
+          ORDER BY r.Datetime DESC
+        `;
+        values.unshift(sanitized);
+      }
     } else {
       // Regular query
       query = `

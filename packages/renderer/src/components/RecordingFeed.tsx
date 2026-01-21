@@ -20,7 +20,14 @@ export function RecordingFeed() {
     // Load recordings from database
     const loadRecordings = async () => {
       try {
-        const data = await databaseApi.recordings.getAll();
+        let data: Recording[];
+        if (searchQuery.trim()) {
+          // Use full-text search when there's a query
+          data = await databaseApi.recordings.search(searchQuery.trim());
+        } else {
+          // Get all recordings when search is empty
+          data = await databaseApi.recordings.getAll();
+        }
         setRecordings(data);
       } catch (error) {
         console.error('Failed to load recordings:', error);
@@ -33,7 +40,7 @@ export function RecordingFeed() {
     const interval = setInterval(loadRecordings, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [searchQuery]);
 
   const getStatusText = (recording: Recording): string => {
     switch (recording.TranscriptionStatus) {
@@ -74,7 +81,6 @@ export function RecordingFeed() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"
-          disabled
         />
         <button className="filter-button" aria-label="Filter">
           🔽
