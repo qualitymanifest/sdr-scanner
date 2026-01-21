@@ -58,6 +58,8 @@ export interface SDRApi {
   startRecording: () => Promise<SDRResponse>;
   stopRecording: () => Promise<SDRResponse>;
   getRecordingStatus: () => Promise<SDRRecordingStatus>;
+  setVolume: (volumeLevel: number) => Promise<SDRResponse>;
+  getVolume: () => Promise<number>;
 }
 
 // Database API types (matching preload/src/databaseApi.ts)

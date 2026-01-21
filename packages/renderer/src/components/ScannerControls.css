@@ -101,6 +101,69 @@
   }
 }
 
+/* Volume Control */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.volume-control label {
+  color: white;
+  font-size: 0.9rem;
+  min-width: 60px;
+}
+
+.volume-slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #3a3a3a;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #00ff00;
+  cursor: pointer;
+  box-shadow: 0 0 5px #00ff00;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #00ff00;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 5px #00ff00;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  background: #00ff00;
+  box-shadow: 0 0 10px #00ff00;
+}
+
+.volume-slider::-moz-range-thumb:hover {
+  background: #00ff00;
+  box-shadow: 0 0 10px #00ff00;
+}
+
+.volume-percentage {
+  color: #00ff00;
+  font-family: 'DSEG14-Classic', 'Courier New', monospace;
+  font-size: 0.9rem;
+  min-width: 45px;
+  text-align: right;
+}
+
 /* Button Container - Side by Side Layout */
 .button-container {
   display: flex;

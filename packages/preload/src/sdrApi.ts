@@ -106,4 +106,20 @@ export const sdrApi = {
   getRecordingStatus: (): Promise<SDRRecordingStatus> => {
     return ipcRenderer.invoke('sdr:getRecordingStatus');
   },
+
+  /**
+   * Set the volume level for live audio output
+   * @param volumeLevel - Volume from 0.0 (silent) to 1.0 (full volume)
+   */
+  setVolume: (volumeLevel: number): Promise<SDRResponse> => {
+    return ipcRenderer.invoke('sdr:setVolume', volumeLevel);
+  },
+
+  /**
+   * Get the current volume level
+   * @returns Volume level from 0.0 to 1.0
+   */
+  getVolume: (): Promise<number> => {
+    return ipcRenderer.invoke('sdr:getVolume');
+  },
 };

@@ -26,6 +26,7 @@ let radio: InstanceType<typeof SDRRadio> | null = null;
 let speaker: any | null = null;
 let isRunning = false;
 let isMuted = false;
+let volume = 1.0; // Volume level from 0.0 to 1.0
 
 // Recording state
 let isRecordingEnabled = false;
@@ -79,6 +80,36 @@ function createRecordingFileName(frequencyHz: number): string {
   const timestamp = dayjs().format('MM-DD-YYYY-HH-mm-ss');
 
   return `${freqFormatted}_${timestamp}.wav`;
+}
+
+/**
+ * Apply volume adjustment to audio buffer
+ * @param buffer - Input audio buffer (16-bit signed PCM)
+ * @param volumeLevel - Volume level from 0.0 to 1.0
+ * @returns New buffer with volume applied
+ */
+function applyVolume(buffer: Buffer, volumeLevel: number): Buffer {
+  // If volume is 1.0, no adjustment needed
+  if (volumeLevel === 1.0) {
+    return buffer;
+  }
+
+  // Create a new buffer to hold the adjusted audio
+  const adjustedBuffer = Buffer.alloc(buffer.length);
+
+  // Audio is 16-bit signed PCM (little endian)
+  for (let i = 0; i < buffer.length; i += 2) {
+    // Read 16-bit signed integer
+    const sample = buffer.readInt16LE(i);
+
+    // Apply volume and clamp to prevent distortion
+    const adjusted = Math.max(-32768, Math.min(32767, Math.round(sample * volumeLevel)));
+
+    // Write adjusted sample
+    adjustedBuffer.writeInt16LE(adjusted, i);
+  }
+
+  return adjustedBuffer;
 }
 
 /**
@@ -363,7 +394,9 @@ function setupIPCHandlers() {
         // Play audio through speakers (in main process)
         if (speaker) {
           if (!isMuted && !squelched) {
-            speaker.write(left);
+            // Apply volume adjustment
+            const adjustedAudio = applyVolume(left, volume);
+            speaker.write(adjustedAudio);
           } else {
             // Write silence to prevent buffer underflow warnings
             const silence = Buffer.alloc(left.length);
@@ -518,6 +551,26 @@ function setupIPCHandlers() {
       isRecording: isRecording(),
       currentRecordingPath: currentRecordingPath ?? null,
     };
+  });
+
+  // Set volume
+  ipcMain.handle('sdr:setVolume', async (_, volumeLevel: number) => {
+    try {
+      // Clamp volume to 0.0 - 1.0 range
+      volume = Math.max(0.0, Math.min(1.0, volumeLevel));
+      return {success: true};
+    } catch (error) {
+      console.error('Failed to set volume:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  // Get volume
+  ipcMain.handle('sdr:getVolume', async () => {
+    return volume;
   });
 }
 

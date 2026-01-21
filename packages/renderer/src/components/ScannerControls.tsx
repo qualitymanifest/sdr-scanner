@@ -24,6 +24,7 @@ export function ScannerControls({
   const [isCreatingNewProfile, setIsCreatingNewProfile] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [volume, setVolume] = useState(1.0);
 
   // Load profiles from database on mount
   const loadProfiles = async () => {
@@ -41,6 +42,9 @@ export function ScannerControls({
 
   useEffect(() => {
     loadProfiles();
+
+    // Load initial volume level
+    sdrApi.getVolume().then(setVolume).catch(console.error);
   }, []);
 
   // Listen for scanner frequency changes
@@ -180,6 +184,21 @@ export function ScannerControls({
     }
   };
 
+  const handleVolumeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const sliderValue = parseFloat(event.target.value);
+    setVolume(sliderValue);
+
+    // Convert linear slider value to logarithmic volume
+    // This makes the volume control feel more natural to human perception
+    const logVolume = sliderValue === 0 ? 0 : Math.pow(sliderValue, 2);
+
+    // Update the main process volume for live audio
+    const result = await sdrApi.setVolume(logVolume);
+    if (!result.success) {
+      console.error('Failed to set volume:', result.error);
+    }
+  };
+
   return (
     <>
       <div className="scanner-controls">
@@ -235,6 +254,22 @@ export function ScannerControls({
             frequency
           )}
         </span>
+      </div>
+
+      {/* Volume Control */}
+      <div className="volume-control">
+        <label htmlFor="volume-slider">Volume:</label>
+        <input
+          id="volume-slider"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={handleVolumeChange}
+          className="volume-slider"
+        />
+        <span className="volume-percentage">{Math.round(volume * 100)}%</span>
       </div>
 
       {/* Button Container - Side by Side */}
