@@ -30,6 +30,15 @@ export interface CreateFrequencyResponse extends DatabaseResponse {
   id?: number;
 }
 
+export interface Recording {
+  Id: number;
+  Frequency: number; // in Hz
+  Datetime: string; // ISO 8601 format
+  FilePath: string;
+  TranscriptionText: string | null;
+  TranscriptionStatus: 'pending' | 'processing' | 'success' | 'failed';
+}
+
 /**
  * Database API for managing profiles and frequencies from the renderer process
  */
@@ -171,6 +180,51 @@ export const databaseApi = {
      */
     deleteByProfileId: (profileId: number): Promise<number> => {
       return ipcRenderer.invoke('db:frequency:deleteByProfileId', profileId);
+    },
+  },
+
+  // Recording operations
+  recordings: {
+    /**
+     * Get all recordings ordered by datetime descending (most recent first)
+     * @returns Promise with array of recordings
+     */
+    getAll: (): Promise<Recording[]> => {
+      return ipcRenderer.invoke('db:recording:getAll');
+    },
+
+    /**
+     * Search recordings by transcription text using full-text search
+     * @param searchQuery - Text to search for in transcriptions
+     * @returns Promise with array of matching recordings
+     */
+    search: (searchQuery: string): Promise<Recording[]> => {
+      return ipcRenderer.invoke('db:recording:search', searchQuery);
+    },
+
+    /**
+     * Filter recordings by various criteria
+     * @param options - Filter options
+     * @returns Promise with array of filtered recordings
+     */
+    filter: (options: {
+      frequencyMin?: number;
+      frequencyMax?: number;
+      datetimeStart?: string;
+      datetimeEnd?: string;
+      transcriptionStatus?: Recording['TranscriptionStatus'];
+      searchText?: string;
+    }): Promise<Recording[]> => {
+      return ipcRenderer.invoke('db:recording:filter', options);
+    },
+
+    /**
+     * Delete a recording by file path
+     * @param filePath - Recording file path
+     * @returns Promise with success status
+     */
+    delete: (filePath: string): Promise<DatabaseResponse> => {
+      return ipcRenderer.invoke('db:recording:delete', filePath);
     },
   },
 };

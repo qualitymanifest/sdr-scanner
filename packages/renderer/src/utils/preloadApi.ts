@@ -91,6 +91,15 @@ export interface CreateFrequencyResponse extends DatabaseResponse {
   id?: number;
 }
 
+export interface Recording {
+  Id: number;
+  Frequency: number; // in Hz
+  Datetime: string; // ISO 8601 format
+  FilePath: string;
+  TranscriptionText: string | null;
+  TranscriptionStatus: 'pending' | 'processing' | 'success' | 'failed';
+}
+
 export interface DatabaseApi {
   profiles: {
     create: (name: string) => Promise<CreateProfileResponse>;
@@ -118,6 +127,19 @@ export interface DatabaseApi {
     updateEnabled: (id: number, enabled: boolean) => Promise<DatabaseResponse>;
     delete: (id: number) => Promise<DatabaseResponse>;
     deleteByProfileId: (profileId: number) => Promise<number>;
+  };
+  recordings: {
+    getAll: () => Promise<Recording[]>;
+    search: (searchQuery: string) => Promise<Recording[]>;
+    filter: (options: {
+      frequencyMin?: number;
+      frequencyMax?: number;
+      datetimeStart?: string;
+      datetimeEnd?: string;
+      transcriptionStatus?: Recording['TranscriptionStatus'];
+      searchText?: string;
+    }) => Promise<Recording[]>;
+    delete: (filePath: string) => Promise<DatabaseResponse>;
   };
 }
 
