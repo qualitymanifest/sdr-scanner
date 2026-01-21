@@ -208,8 +208,7 @@ export const databaseApi = {
      * @returns Promise with array of filtered recordings
      */
     filter: (options: {
-      frequencyMin?: number;
-      frequencyMax?: number;
+      frequency?: number;
       datetimeStart?: string;
       datetimeEnd?: string;
       transcriptionStatus?: Recording['TranscriptionStatus'];

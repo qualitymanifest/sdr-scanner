@@ -721,8 +721,7 @@ export const recordingRepository = {
    * Filter recordings by various criteria
    */
   filter(options: {
-    frequencyMin?: number;
-    frequencyMax?: number;
+    frequency?: number;
     datetimeStart?: string;
     datetimeEnd?: string;
     transcriptionStatus?: Recording['TranscriptionStatus'];
@@ -732,14 +731,9 @@ export const recordingRepository = {
     const conditions: string[] = [];
     const values: any[] = [];
 
-    if (options.frequencyMin !== undefined) {
-      conditions.push('r.Frequency >= ?');
-      values.push(options.frequencyMin);
-    }
-
-    if (options.frequencyMax !== undefined) {
-      conditions.push('r.Frequency <= ?');
-      values.push(options.frequencyMax);
+    if (options.frequency !== undefined) {
+      conditions.push('r.Frequency = ?');
+      values.push(options.frequency);
     }
 
     if (options.datetimeStart !== undefined) {

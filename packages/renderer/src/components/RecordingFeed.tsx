@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './RecordingFeed.css';
 import { databaseApi, type Recording } from '../utils/preloadApi';
+import { FilterModal, type FilterOptions } from './FilterModal';
 
 // Enum object for TranscriptionStatus matching Database.ts
 export const TranscriptionStatus = {
@@ -15,19 +16,30 @@ export type TranscriptionStatusType = typeof TranscriptionStatus[keyof typeof Tr
 export function RecordingFeed() {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({});
 
   useEffect(() => {
     // Load recordings from database
     const loadRecordings = async () => {
       try {
         let data: Recording[];
-        if (searchQuery.trim()) {
-          // Use full-text search when there's a query
-          data = await databaseApi.recordings.search(searchQuery.trim());
+
+        // Check if we have any filters or search query
+        const hasFilters = Object.keys(filters).length > 0;
+        const hasSearchQuery = searchQuery.trim().length > 0;
+
+        if (hasFilters || hasSearchQuery) {
+          // Use the filter API which supports both filters and search
+          data = await databaseApi.recordings.filter({
+            ...filters,
+            searchText: hasSearchQuery ? searchQuery.trim() : undefined,
+          });
         } else {
-          // Get all recordings when search is empty
+          // Get all recordings when no filters or search
           data = await databaseApi.recordings.getAll();
         }
+
         setRecordings(data);
       } catch (error) {
         console.error('Failed to load recordings:', error);
@@ -40,7 +52,7 @@ export function RecordingFeed() {
     const interval = setInterval(loadRecordings, 5000);
 
     return () => clearInterval(interval);
-  }, [searchQuery]);
+  }, [searchQuery, filters]);
 
   const getStatusText = (recording: Recording): string => {
     switch (recording.TranscriptionStatus) {
@@ -71,6 +83,10 @@ export function RecordingFeed() {
     return (frequencyHz / 1_000_000).toFixed(3);
   };
 
+  const handleFilterApply = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+  };
+
   return (
     <div className="recording-feed">
       {/* Search Bar */}
@@ -82,10 +98,22 @@ export function RecordingFeed() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"
         />
-        <button className="filter-button" aria-label="Filter">
+        <button
+          className="filter-button"
+          aria-label="Filter"
+          onClick={() => setIsFilterModalOpen(true)}
+        >
           🔽
         </button>
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={handleFilterApply}
+        currentFilters={filters}
+      />
 
       {/* Feed List */}
       <div className="feed-list">
