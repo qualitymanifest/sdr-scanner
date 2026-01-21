@@ -87,6 +87,29 @@ export function RecordingFeed() {
     setFilters(newFilters);
   };
 
+  const handleDelete = async (recording: Recording, event: React.MouseEvent) => {
+    // Prevent the feed item click event from firing
+    event.stopPropagation();
+
+    // Confirm deletion
+    if (!confirm(`Delete recording from ${formatTimestamp(recording.Datetime)} at ${formatFrequency(recording.Frequency)} MHz?`)) {
+      return;
+    }
+
+    try {
+      const result = await databaseApi.recordings.delete(recording.FilePath);
+      if (result.success) {
+        // Remove from local state immediately for responsive UI
+        setRecordings(prev => prev.filter(r => r.Id !== recording.Id));
+      } else {
+        alert(`Failed to delete recording: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete recording:', error);
+      alert('Failed to delete recording');
+    }
+  };
+
   return (
     <div className="recording-feed">
       {/* Search Bar */}
@@ -119,13 +142,23 @@ export function RecordingFeed() {
       <div className="feed-list">
         {recordings.map((recording) => (
           <div key={recording.Id} className="feed-item">
-            <div className="feed-header">
-              {formatTimestamp(recording.Datetime)} - {formatFrequency(recording.Frequency)} 
-              {getStatusText(recording)}
+            <div className="feed-item-content">
+              <div className="feed-header">
+                {formatTimestamp(recording.Datetime)} - {formatFrequency(recording.Frequency)}
+                {getStatusText(recording)}
+              </div>
+              {recording.TranscriptionStatus === TranscriptionStatus.SUCCESS && recording.TranscriptionText && (
+                <div className="feed-transcription">{recording.TranscriptionText}</div>
+              )}
             </div>
-            {recording.TranscriptionStatus === TranscriptionStatus.SUCCESS && recording.TranscriptionText && (
-              <div className="feed-transcription">{recording.TranscriptionText}</div>
-            )}
+            <button
+              className="delete-button"
+              aria-label="Delete recording"
+              onClick={(e) => handleDelete(recording, e)}
+              title="Delete recording"
+            >
+              🗑️
+            </button>
           </div>
         ))}
       </div>

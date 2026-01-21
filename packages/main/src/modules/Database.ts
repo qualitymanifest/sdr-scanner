@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import {app, ipcMain} from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import type {AppModule} from '../AppModule.js';
 
 export interface Profile {
@@ -661,7 +662,7 @@ export const recordingRepository = {
   },
 
   /**
-   * Delete a recording by file path
+   * Delete a recording by file path (deletes both database records and physical file)
    */
   delete(filePath: string): boolean {
     const db = getDatabase();
@@ -680,6 +681,19 @@ export const recordingRepository = {
     if (result.changes > 0) {
       const ftsStmt = db.prepare('DELETE FROM Recordings_fts WHERE rowid = ?');
       ftsStmt.run(recording.Id);
+
+      // Delete the physical file
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log(`[Database] Deleted recording file: ${filePath}`);
+        } else {
+          console.warn(`[Database] Recording file not found: ${filePath}`);
+        }
+      } catch (error) {
+        console.error(`[Database] Failed to delete recording file: ${filePath}`, error);
+        // Continue anyway - database record is already deleted
+      }
     }
 
     return result.changes > 0;
