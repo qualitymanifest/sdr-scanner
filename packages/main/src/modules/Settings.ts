@@ -8,10 +8,13 @@ import Store from 'electron-store';
  * Manages application settings using electron-store for persistence
  */
 
+export type WhisperModel = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
+
 export interface AppSettings {
   unsquelchWaitTime: number; // milliseconds
   recordingTimeout: number; // milliseconds
   minimumRecordingDuration: number; // milliseconds
+  transcriptionModel: WhisperModel;
 }
 
 // Default settings
@@ -19,6 +22,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   unsquelchWaitTime: 2000, // 2 seconds
   recordingTimeout: 2000, // 2 seconds
   minimumRecordingDuration: 1000, // 1 second
+  transcriptionModel: 'base', // Default to base model (good balance)
 };
 
 // Create persistent store
@@ -58,6 +62,12 @@ export function createSettingsModule(): AppModule {
               return { success: false, error: 'Minimum recording duration must be a positive number' };
             }
           }
+          if (settings.transcriptionModel !== undefined) {
+            const validModels: WhisperModel[] = ['tiny', 'base', 'small', 'medium', 'large-v3'];
+            if (!validModels.includes(settings.transcriptionModel)) {
+              return { success: false, error: 'Invalid transcription model' };
+            }
+          }
 
           // Update the store
           for (const [key, value] of Object.entries(settings)) {
@@ -94,4 +104,8 @@ export function getRecordingTimeout(): number {
 
 export function getMinimumRecordingDuration(): number {
   return store.get('minimumRecordingDuration', DEFAULT_SETTINGS.minimumRecordingDuration);
+}
+
+export function getTranscriptionModel(): WhisperModel {
+  return store.get('transcriptionModel', DEFAULT_SETTINGS.transcriptionModel);
 }

@@ -57,7 +57,7 @@ export function RecordingFeed() {
   const getStatusText = (recording: Recording): string => {
     switch (recording.TranscriptionStatus) {
       case TranscriptionStatus.PENDING:
-        return ' - Not transcribed';
+        return ' - Transcription Pending';
       case TranscriptionStatus.PROCESSING:
         return ' - Transcribing';
       case TranscriptionStatus.FAILED:

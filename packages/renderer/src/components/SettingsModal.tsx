@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
 import './SettingsModal.css';
-import { settingsApi } from '../utils/preloadApi';
+import { settingsApi, type WhisperModel } from '../utils/preloadApi';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const MODEL_INFO: Record<WhisperModel, { size: string; description: string }> = {
+  'tiny': { size: '39 MB', description: 'Fastest, least accurate' },
+  'base': { size: '142 MB', description: 'Good balance (recommended)' },
+  'small': { size: '466 MB', description: 'Better accuracy, slower' },
+  'medium': { size: '1.5 GB', description: 'High accuracy, much slower' },
+  'large-v3': { size: '3.1 GB', description: 'Best accuracy, very slow' },
+};
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [unsquelchWaitTime, setUnsquelchWaitTime] = useState('2000');
   const [recordingTimeout, setRecordingTimeout] = useState('2000');
   const [minimumRecordingDuration, setMinimumRecordingDuration] = useState('1000');
+  const [transcriptionModel, setTranscriptionModel] = useState<WhisperModel>('base');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,6 +36,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setUnsquelchWaitTime(settings.unsquelchWaitTime.toString());
         setRecordingTimeout(settings.recordingTimeout.toString());
         setMinimumRecordingDuration(settings.minimumRecordingDuration.toString());
+        setTranscriptionModel(settings.transcriptionModel);
       } catch (err) {
         console.error('Failed to load settings:', err);
         setError('Failed to load settings');
@@ -64,6 +74,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         unsquelchWaitTime: unsquelchValue,
         recordingTimeout: recordingValue,
         minimumRecordingDuration: minimumDurationValue,
+        transcriptionModel: transcriptionModel,
       });
 
       if (result.success) {
@@ -86,6 +97,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setUnsquelchWaitTime(settings.unsquelchWaitTime.toString());
       setRecordingTimeout(settings.recordingTimeout.toString());
       setMinimumRecordingDuration(settings.minimumRecordingDuration.toString());
+      setTranscriptionModel(settings.transcriptionModel);
       setError('');
       onClose();
     } catch (err) {
@@ -154,6 +166,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             />
             <div className="input-help">
               Recordings shorter than this duration will be discarded
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="transcription-model">Transcription Model</label>
+            <select
+              id="transcription-model"
+              value={transcriptionModel}
+              onChange={(e) => setTranscriptionModel(e.target.value as WhisperModel)}
+              className="settings-input"
+            >
+              {(Object.keys(MODEL_INFO) as WhisperModel[]).map((model) => {
+                const info = MODEL_INFO[model];
+                return (
+                  <option key={model} value={model}>
+                    {model} - {info.size} - {info.description}
+                  </option>
+                );
+              })}
+            </select>
+            <div className="input-help">
+              Choose transcription accuracy vs speed. Model will download automatically on first use. Changing this setting only affects new transcriptions.
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import {app} from 'electron';
 import https from 'node:https';
 import {createWriteStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
+import {getTranscriptionModel, type WhisperModel} from './Settings.js';
 
 /**
  * TranscriptionService Module
@@ -26,14 +27,27 @@ interface TranscriptionResult {
   duration: number;
 }
 
-// Configuration
-const DEFAULT_MODEL = 'ggml-base.bin';
-const MODEL_URL = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${DEFAULT_MODEL}`;
+// Model configuration
+const MODEL_FILES: Record<WhisperModel, string> = {
+  'tiny': 'ggml-tiny.bin',
+  'base': 'ggml-base.bin',
+  'small': 'ggml-small.bin',
+  'medium': 'ggml-medium.bin',
+  'large-v3': 'ggml-large-v3.bin',
+};
+
+const MODEL_SIZES: Record<WhisperModel, string> = {
+  'tiny': '39 MB',
+  'base': '142 MB',
+  'small': '466 MB',
+  'medium': '1.5 GB',
+  'large-v3': '3.1 GB',
+};
 
 // Queue and state
 const transcriptionQueue: TranscriptionJob[] = [];
 let isProcessing = false;
-let isModelDownloaded = false;
+const downloadedModels = new Set<WhisperModel>();
 
 /**
  * Get the path to the whisper resources directory
@@ -82,32 +96,37 @@ function getWhisperBinaryPath(): string {
 }
 
 /**
- * Get the path to the whisper model
+ * Get the path to the whisper model for a specific model type
  */
-function getModelPath(): string {
+function getModelPath(model: WhisperModel): string {
   const resourcesPath = getWhisperResourcesPath();
-  return path.join(resourcesPath, 'models', DEFAULT_MODEL);
+  const modelFile = MODEL_FILES[model];
+  return path.join(resourcesPath, 'models', modelFile);
 }
 
 /**
  * Download the whisper model if it doesn't exist
  */
-async function ensureModelDownloaded(): Promise<void> {
-  if (isModelDownloaded) {
+async function ensureModelDownloaded(model: WhisperModel): Promise<void> {
+  // Check if already downloaded
+  if (downloadedModels.has(model)) {
     return;
   }
 
-  const modelPath = getModelPath();
+  const modelPath = getModelPath(model);
+  const modelFile = MODEL_FILES[model];
+  const modelSize = MODEL_SIZES[model];
+  const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${modelFile}`;
 
   // Check if model already exists
   if (fs.existsSync(modelPath)) {
     console.log(`Model already exists at ${modelPath}`);
-    isModelDownloaded = true;
+    downloadedModels.add(model);
     return;
   }
 
-  console.log(`Downloading whisper model from ${MODEL_URL}...`);
-  console.log(`This may take a few minutes (${DEFAULT_MODEL} is ~142 MB)`);
+  console.log(`Downloading whisper model (${model}) from ${modelUrl}...`);
+  console.log(`This may take a few minutes (${modelFile} is ~${modelSize})`);
 
   // Ensure models directory exists
   const modelsDir = path.dirname(modelPath);
@@ -118,7 +137,7 @@ async function ensureModelDownloaded(): Promise<void> {
   // Download the model
   return new Promise((resolve, reject) => {
     https
-      .get(MODEL_URL, response => {
+      .get(modelUrl, response => {
         if (response.statusCode === 302 || response.statusCode === 301) {
           // Follow redirect
           const redirectUrl = response.headers.location;
@@ -153,7 +172,7 @@ async function ensureModelDownloaded(): Promise<void> {
               pipeline(redirectResponse, fileStream)
                 .then(() => {
                   console.log(`Model downloaded successfully to ${modelPath}`);
-                  isModelDownloaded = true;
+                  downloadedModels.add(model);
                   resolve();
                 })
                 .catch(reject);
@@ -178,7 +197,7 @@ async function ensureModelDownloaded(): Promise<void> {
           pipeline(response, fileStream)
             .then(() => {
               console.log(`Model downloaded successfully to ${modelPath}`);
-              isModelDownloaded = true;
+              downloadedModels.add(model);
               resolve();
             })
             .catch(reject);
@@ -192,15 +211,21 @@ async function ensureModelDownloaded(): Promise<void> {
 
 /**
  * Transcribe an audio file using whisper.cpp
+ * This function retrieves the current model preference from settings at transcription time.
+ * This ensures that if the user changes the model while transcriptions are queued,
+ * only NEW transcriptions will use the new model, while in-progress ones complete with the old model.
  */
 async function transcribeFile(filePath: string): Promise<TranscriptionResult> {
-  // Ensure model is downloaded
-  await ensureModelDownloaded();
+  // Get the current model preference from settings
+  const currentModel = getTranscriptionModel();
+
+  // Ensure the selected model is downloaded
+  await ensureModelDownloaded(currentModel);
 
   const binaryPath = getWhisperBinaryPath();
-  const modelPath = getModelPath();
+  const modelPath = getModelPath(currentModel);
 
-  console.log(`Transcribing: ${filePath}`);
+  console.log(`Transcribing: ${filePath} (using ${currentModel} model)`);
 
   return new Promise((resolve, reject) => {
     const args = [
@@ -354,9 +379,11 @@ async function initialize(): Promise<void> {
       }
     }
 
-    // Start model download in background (don't await)
-    ensureModelDownloaded().catch(error => {
-      console.error('Failed to download whisper model:', error);
+    // Start model download in background for the current model (don't await)
+    const currentModel = getTranscriptionModel();
+    console.log(`Current transcription model: ${currentModel}`);
+    ensureModelDownloaded(currentModel).catch(error => {
+      console.error(`Failed to download whisper model (${currentModel}):`, error);
     });
 
     console.log('TranscriptionService initialized');

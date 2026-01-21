@@ -192,10 +192,13 @@ export const databaseApi = getPreloadApi<DatabaseApi>('databaseApi');
 export const scannerApi = getPreloadApi<ScannerApi>('scannerApi');
 
 // Settings API types (matching preload/src/settingsApi.ts)
+export type WhisperModel = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
+
 export interface AppSettings {
   unsquelchWaitTime: number; // milliseconds
   recordingTimeout: number; // milliseconds
   minimumRecordingDuration: number; // milliseconds
+  transcriptionModel: WhisperModel;
 }
 
 export interface SettingsResponse {
