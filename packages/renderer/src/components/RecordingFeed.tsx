@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './RecordingFeed.css';
 import { databaseApi, type Recording } from '../utils/preloadApi';
 import { FilterModal, type FilterOptions } from './FilterModal';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // Enum object for TranscriptionStatus matching Database.ts
 export const TranscriptionStatus = {
@@ -18,6 +19,15 @@ export function RecordingFeed() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({});
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: recordings.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 100, // estimated height of each item in pixels
+    overscan: 10, // render 10 extra items above/below viewport for smooth scrolling
+    gap: 16, // 1rem gap between items
+  });
 
   useEffect(() => {
     // Load recordings from database
@@ -139,28 +149,49 @@ export function RecordingFeed() {
       />
 
       {/* Feed List */}
-      <div className="feed-list">
-        {recordings.map((recording) => (
-          <div key={recording.Id} className="feed-item">
-            <div className="feed-item-content">
-              <div className="feed-header">
-                {formatTimestamp(recording.Datetime)} - {formatFrequency(recording.Frequency)}
-                {getStatusText(recording)}
+      <div ref={parentRef} className="feed-list">
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const recording = recordings[virtualItem.index];
+            return (
+              <div
+                key={recording.Id}
+                className="feed-item"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <div className="feed-item-content">
+                  <div className="feed-header">
+                    {formatTimestamp(recording.Datetime)} - {formatFrequency(recording.Frequency)}
+                    {getStatusText(recording)}
+                  </div>
+                  {recording.TranscriptionStatus === TranscriptionStatus.SUCCESS && recording.TranscriptionText && (
+                    <div className="feed-transcription">{recording.TranscriptionText}</div>
+                  )}
+                </div>
+                <button
+                  className="delete-button"
+                  aria-label="Delete recording"
+                  onClick={(e) => handleDelete(recording, e)}
+                  title="Delete recording"
+                >
+                  🗑️
+                </button>
               </div>
-              {recording.TranscriptionStatus === TranscriptionStatus.SUCCESS && recording.TranscriptionText && (
-                <div className="feed-transcription">{recording.TranscriptionText}</div>
-              )}
-            </div>
-            <button
-              className="delete-button"
-              aria-label="Delete recording"
-              onClick={(e) => handleDelete(recording, e)}
-              title="Delete recording"
-            >
-              🗑️
-            </button>
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
