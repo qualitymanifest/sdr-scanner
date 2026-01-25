@@ -20,6 +20,8 @@ export function RecordingFeed() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({});
   const parentRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
 
   const virtualizer = useVirtualizer({
     count: recordings.length,
@@ -28,6 +30,61 @@ export function RecordingFeed() {
     overscan: 10, // render 10 extra items above/below viewport for smooth scrolling
     gap: 16, // 1rem gap between items
   });
+
+  // Scroll to bottom
+  const scrollToBottom = () => {
+    const element = parentRef.current;
+    if (element) {
+      element.scrollTop = element.scrollHeight;
+    }
+  };
+
+  // Handle user scrolling
+  useEffect(() => {
+    const element = parentRef.current;
+    if (!element) return;
+
+    // Check if user is at the bottom of the scroll
+    const isAtBottom = () => {
+      if (!element) return true;
+      const threshold = 100; // pixels from bottom to consider "at bottom"
+      return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+    };
+
+    const handleScroll = () => {
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Check if at bottom
+      const atBottom = isAtBottom();
+
+      // Mark that user is scrolling away from bottom
+      isUserScrollingRef.current = !atBottom;
+
+      // Reset the flag after user stops scrolling for 150ms
+      scrollTimeoutRef.current = setTimeout(() => {
+        isUserScrollingRef.current = !isAtBottom();
+      }, 150);
+    };
+
+    element.addEventListener('scroll', handleScroll);
+    return () => {
+      element.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Auto-scroll to bottom when new recordings arrive
+  useEffect(() => {
+    if (!isUserScrollingRef.current) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(scrollToBottom, 0);
+    }
+  }, [recordings.length]);
 
   useEffect(() => {
     // Load recordings from database
@@ -50,7 +107,8 @@ export function RecordingFeed() {
           data = await databaseApi.recordings.getAll();
         }
 
-        setRecordings(data);
+        // Reverse the order so newest is at the bottom
+        setRecordings(data.reverse());
       } catch (error) {
         console.error('Failed to load recordings:', error);
       }
