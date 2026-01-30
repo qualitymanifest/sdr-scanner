@@ -215,3 +215,24 @@ export interface SettingsApi {
 
 // Export the Settings API
 export const settingsApi = getPreloadApi<SettingsApi>('settingsApi');
+
+// Audio Playback API types (matching preload/src/audioApi.ts)
+export interface AudioPlaybackStatus {
+  isPlaying: boolean;
+  filePath: string | null;
+}
+
+export interface AudioResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AudioApi {
+  play: (filePath: string) => Promise<AudioResponse>;
+  stop: () => Promise<AudioResponse>;
+  getStatus: () => Promise<AudioPlaybackStatus>;
+  getCurrentFile: () => Promise<string | null>;
+}
+
+// Export the Audio API
+export const audioApi = getPreloadApi<AudioApi>('audioApi');

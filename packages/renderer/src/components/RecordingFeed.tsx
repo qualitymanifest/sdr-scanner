@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './RecordingFeed.css';
-import { databaseApi, type Recording } from '../utils/preloadApi';
+import { databaseApi, audioApi, type Recording } from '../utils/preloadApi';
 import { FilterModal, type FilterOptions } from './FilterModal';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -19,9 +19,10 @@ export function RecordingFeed() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({});
+  const [currentlyPlayingFile, setCurrentlyPlayingFile] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
   const isUserScrollingRef = useRef(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const virtualizer = useVirtualizer({
     count: recordings.length,
@@ -85,6 +86,32 @@ export function RecordingFeed() {
       setTimeout(scrollToBottom, 0);
     }
   }, [recordings.length]);
+
+  // Poll for audio playback status
+  useEffect(() => {
+    const checkPlaybackStatus = async () => {
+      try {
+        const status = await audioApi.getStatus();
+        if (!status.isPlaying && currentlyPlayingFile !== null) {
+          // Playback has stopped, clear the state
+          setCurrentlyPlayingFile(null);
+        } else if (status.isPlaying && status.filePath !== currentlyPlayingFile) {
+          // Update to the currently playing file
+          setCurrentlyPlayingFile(status.filePath);
+        }
+      } catch (error) {
+        console.error('Failed to check playback status:', error);
+      }
+    };
+
+    // Check immediately
+    checkPlaybackStatus();
+
+    // Poll every second
+    const interval = setInterval(checkPlaybackStatus, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentlyPlayingFile]);
 
   useEffect(() => {
     // Load recordings from database
@@ -178,6 +205,32 @@ export function RecordingFeed() {
     }
   };
 
+  const handlePlayRecording = async (recording: Recording) => {
+    try {
+      // If this recording is already playing, stop it
+      if (currentlyPlayingFile === recording.FilePath) {
+        const result = await audioApi.stop();
+        if (result.success) {
+          setCurrentlyPlayingFile(null);
+        } else {
+          console.error('Failed to stop playback:', result.error);
+        }
+        return;
+      }
+
+      // Play the recording
+      const result = await audioApi.play(recording.FilePath);
+      if (result.success) {
+        setCurrentlyPlayingFile(recording.FilePath);
+      } else {
+        alert(`Failed to play recording: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to play recording:', error);
+      alert('Failed to play recording');
+    }
+  };
+
   return (
     <div className="recording-feed">
       {/* Search Bar */}
@@ -217,20 +270,25 @@ export function RecordingFeed() {
         >
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const recording = recordings[virtualItem.index];
+            const isPlaying = currentlyPlayingFile === recording.FilePath;
             return (
               <div
                 key={recording.Id}
-                className="feed-item"
+                className={`feed-item ${isPlaying ? 'playing' : ''}`}
                 style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   width: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
+                  cursor: 'pointer',
                 }}
+                onClick={() => handlePlayRecording(recording)}
+                title={isPlaying ? 'Click to stop playback' : 'Click to play'}
               >
                 <div className="feed-item-content">
                   <div className="feed-header">
+                    {isPlaying && '▶ '}
                     {formatTimestamp(recording.Datetime)} - {formatFrequency(recording.Frequency)}
                     {getStatusText(recording)}
                   </div>

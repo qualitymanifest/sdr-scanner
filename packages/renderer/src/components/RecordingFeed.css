@@ -75,6 +75,15 @@
   background-color: #7a7a7a;
 }
 
+.feed-item.playing {
+  background-color: #4a6a4a;
+  border: 2px solid #00ff00;
+}
+
+.feed-item.playing:hover {
+  background-color: #5a7a5a;
+}
+
 .feed-item-content {
   flex: 1;
   min-width: 0;

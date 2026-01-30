@@ -12,6 +12,7 @@ import {createDatabaseModule} from './modules/Database.js';
 import {createScannerModule} from './modules/Scanner.js';
 import {createSettingsModule} from './modules/Settings.js';
 import {createTranscriptionService} from './modules/TranscriptionService.js';
+import {createAudioPlaybackModule} from './modules/AudioPlayback.js';
 
 
 export async function initApp(initConfig: AppInitConfig) {
@@ -26,6 +27,7 @@ export async function initApp(initConfig: AppInitConfig) {
     .init(createTranscriptionService())
     .init(createSDRService())
     .init(createScannerModule())
+    .init(createAudioPlaybackModule())
 
     // Install DevTools extension if needed
     // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
