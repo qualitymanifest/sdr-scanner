@@ -24,7 +24,7 @@
     "build-whisper": "bash scripts/build-whisper-local.sh"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.7.2",
+    "@electron/rebuild": "^4.0.1",
     "@npmcli/map-workspaces": "5.0.0",
     "@playwright/test": "1.55.1",
     "@types/better-sqlite3": "^7.6.13",
